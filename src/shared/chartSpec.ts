@@ -42,6 +42,25 @@ export interface ChartControls {
   atr: boolean;
 }
 
+/** 图上标记（可序列化；客户端映射到 lightweight-charts 的 series markers）。 */
+export interface ChartMarker {
+  time: number;
+  position: "aboveBar" | "belowBar" | "inBar" | "atPriceTop" | "atPriceBottom" | "atPriceMiddle";
+  shape: "circle" | "square" | "arrowUp" | "arrowDown";
+  color: string;
+  text?: string;
+  /** atPrice* 定位时必填：标记的精确价格。 */
+  price?: number;
+}
+
+/** 水平价位线：支撑、阻力或斐波那契位。 */
+export interface ChartLevel {
+  price: number;
+  label: string;
+  kind: "support" | "resistance" | "fib";
+  color: string;
+}
+
 /** 宿主 ↔ 客户端唯一契约：宿主产出它，客户端把它渲染出来。 */
 export interface ChartSpec {
   symbol: string;
@@ -52,4 +71,10 @@ export interface ChartSpec {
   formingBar?: boolean;
   /** 图卡控件的当前状态；缺省表示不渲染控件。 */
   controls?: ChartControls;
+  /** 规则信号等机械事件在价格图上的标记。 */
+  markers?: ChartMarker[];
+  /** 支撑/阻力/斐波那契等水平价位线。 */
+  levels?: ChartLevel[];
+  /** 图上说明文字（如均线排列）。 */
+  notes?: string[];
 }

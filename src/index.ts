@@ -83,6 +83,8 @@ export function apply(ctx: HostContext): void {
             interval: { type: "string", required: true },
             bars: { type: "number", required: true },
             indicators: { type: "string", required: true },
+            candidates: { type: "json", required: true },
+            ruleSignals: { type: "json", required: true },
             chartSpec: { type: "json", required: true },
           },
         },
@@ -91,11 +93,16 @@ export function apply(ctx: HostContext): void {
             type: "text",
             text: `已渲染 ${value.symbol} / ${value.interval} 的 ${value.bars} 根 K 线（Binance 现货）；指标：${value.indicators}。`,
           },
+          {
+            type: "text",
+            text: "机械数据（确定性计算，未作判断）："
+              + JSON.stringify({ candidates: value.candidates, ruleSignals: value.ruleSignals }),
+          },
         ],
         presentationMeta: (_args, value) => value.chartSpec,
       },
       execute: async (args) => {
-        const { spec, resolved, bars } = await loadChart(provider, {
+        const { spec, resolved, bars, candidates, ruleSignals } = await loadChart(provider, {
           symbol: args.symbol,
           timeframe: args.timeframe,
           ma: args.ma,
@@ -109,6 +116,8 @@ export function apply(ctx: HostContext): void {
           interval: resolved.interval,
           bars,
           indicators: describeIndicators(resolved.indicators),
+          candidates: candidates as unknown as Json,
+          ruleSignals: ruleSignals as unknown as Json,
           chartSpec: spec as unknown as Json,
         };
       },

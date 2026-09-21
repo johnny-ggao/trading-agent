@@ -42,3 +42,54 @@ describe("loadChart（工具与 HTTP 端点共用）", () => {
     expect(loaded.spec.series.some((series) => series.id === "candles")).toBe(true);
   });
 });
+
+/** 11 根：第 3 根高点 13、第 8 根低点 7。 */
+const trendCandles: Candle[] = [
+  { time: 0, open: 10, high: 10, low: 9, close: 10 },
+  { time: 1, open: 10, high: 11, low: 10, close: 11 },
+  { time: 2, open: 11, high: 12, low: 11, close: 12 },
+  { time: 3, open: 12, high: 13, low: 12, close: 13 },
+  { time: 4, open: 13, high: 12, low: 11, close: 12 },
+  { time: 5, open: 12, high: 11, low: 10, close: 11 },
+  { time: 6, open: 11, high: 10, low: 9, close: 10 },
+  { time: 7, open: 10, high: 9, low: 8, close: 9 },
+  { time: 8, open: 9, high: 8, low: 7, close: 8 },
+  { time: 9, open: 8, high: 9, low: 8, close: 9 },
+  { time: 10, open: 9, high: 10, low: 9, close: 10 },
+];
+
+/** 5 根：最后一根收 12.5，突破前 3 根的高点 12。 */
+const breakoutCandles: Candle[] = [
+  { time: 0, open: 9, high: 10, low: 8, close: 9 },
+  { time: 1, open: 10, high: 11, low: 9, close: 10 },
+  { time: 2, open: 11, high: 12, low: 10, close: 11 },
+  { time: 3, open: 10, high: 11, low: 9, close: 10 },
+  { time: 4, open: 12, high: 13, low: 11, close: 12.5 },
+];
+
+describe("loadChart 的机械层", () => {
+  it("产出 swing 枢轴与斐波那契位", async () => {
+    const loaded = await loadChart(fakeProvider(trendCandles), { symbol: "BTC", timeframe: "1h" });
+    expect(loaded.candidates.pivots).toEqual([
+      { time: 3, price: 13, kind: "high" },
+      { time: 8, price: 7, kind: "low" },
+    ]);
+    expect(loaded.candidates.levels.filter((level) => level.kind === "fib")).toHaveLength(5);
+    expect(loaded.spec.levels?.some((level) => level.kind === "support")).toBe(true);
+    expect(loaded.spec.levels?.some((level) => level.kind === "fib")).toBe(true);
+    expect(loaded.spec.markers).toEqual([
+      { time: 3, position: "atPriceMiddle", shape: "circle", color: "#ef5350", price: 13 },
+      { time: 8, position: "atPriceMiddle", shape: "circle", color: "#26a69a", price: 7 },
+    ]);
+  });
+
+  it("把突破信号写进 ruleSignals 与 chartSpec.markers", async () => {
+    const loaded = await loadChart(fakeProvider(breakoutCandles), { symbol: "BTC", timeframe: "1h" });
+    const breakout = loaded.ruleSignals.find((signal) => signal.kind === "breakout-high");
+    expect(breakout?.direction).toBe("bullish");
+    expect(loaded.spec.markers).toEqual([
+      { time: 4, position: "belowBar", shape: "arrowUp", color: "#26a69a", text: "突破前高" },
+    ]);
+  });
+});
+

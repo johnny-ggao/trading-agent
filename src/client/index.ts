@@ -3,7 +3,9 @@ import {
   CandlestickSeries,
   HistogramSeries,
   LineSeries,
+  LineStyle,
   createChart,
+  createSeriesMarkers,
   type IChartApi,
   type ISeriesApi,
 } from "lightweight-charts";
@@ -91,8 +93,8 @@ function buildLegend(spec: ChartSpec): LegendPane[] {
     .filter((pane) => pane.rows.length > 0);
 }
 
-function LegendOverlay(props: { legend: LegendPane[] }): React.ReactElement | null {
-  if (props.legend.length === 0) return null;
+function LegendOverlay(props: { legend: LegendPane[]; notes: string[] }): React.ReactElement | null {
+  if (props.legend.length === 0 && props.notes.length === 0) return null;
   return React.createElement(
     "div",
     {
@@ -109,23 +111,27 @@ function LegendOverlay(props: { legend: LegendPane[] }): React.ReactElement | nu
         opacity: 0.95,
       },
     },
-    props.legend.map((pane) =>
-      React.createElement("div", { key: pane.title, style: { display: "flex", gap: "10px" } }, [
-        ...(pane.rows.length > 1
-          ? [React.createElement("span", { key: "__title", style: { opacity: 0.55 } }, pane.title)]
-          : []),
-        ...pane.rows.map((row) =>
-          React.createElement("span", { key: row.label }, [
-            React.createElement("span", { key: "label", style: { color: row.color } }, row.label),
-            React.createElement(
-              "span",
-              { key: "value", style: { opacity: 0.85 } },
-              row.value === undefined ? "" : ` ${formatValue(row.value)}`,
-            ),
-          ]),
-        ),
-      ]),
-    ),
+    [
+      ...props.notes.map((note, index) =>
+        React.createElement("div", { key: `note-${index}`, "data-trading-note": "1", style: { opacity: 0.7 } }, note)),
+      ...props.legend.map((pane) =>
+        React.createElement("div", { key: pane.title, style: { display: "flex", gap: "10px" } }, [
+          ...(pane.rows.length > 1
+            ? [React.createElement("span", { key: "__title", style: { opacity: 0.55 } }, pane.title)]
+            : []),
+          ...pane.rows.map((row) =>
+            React.createElement("span", { key: row.label }, [
+              React.createElement("span", { key: "label", style: { color: row.color } }, row.label),
+              React.createElement(
+                "span",
+                { key: "value", style: { opacity: 0.85 } },
+                row.value === undefined ? "" : ` ${formatValue(row.value)}`,
+              ),
+            ]),
+          ),
+        ]),
+      ),
+    ],
   );
 }
 
@@ -279,6 +285,23 @@ function TradingChart(props: { spec: ChartSpec; onControlChange?: (target: Contr
           paneIndex,
         ) as ISeriesApi<keyof typeof SERIES_DEFS>;
         api.setData(series.data as never);
+        // 机械层挂在 K 线序列上：价位线 + 规则信号/枢轴标记。
+        if (series.type === "Candlestick") {
+          const candlesApi = api as ISeriesApi<"Candlestick">;
+          for (const level of props.spec.levels ?? []) {
+            candlesApi.createPriceLine({
+              price: level.price,
+              color: level.color,
+              lineWidth: 1,
+              lineStyle: LineStyle.Dashed,
+              axisLabelVisible: true,
+              title: level.label,
+            });
+          }
+          if (props.spec.markers !== undefined && props.spec.markers.length > 0) {
+            createSeriesMarkers(candlesApi, props.spec.markers as never);
+          }
+        }
       }
     });
     chart.panes().forEach((pane, index) => pane.setStretchFactor(index === 0 ? 2 : 1));
@@ -302,7 +325,7 @@ function TradingChart(props: { spec: ChartSpec; onControlChange?: (target: Contr
         "data-trading-chart": "1",
         style: { width: "100%", height: `${height}px` },
       }),
-      React.createElement(LegendOverlay, { legend }),
+      React.createElement(LegendOverlay, { legend, notes: props.spec.notes ?? [] }),
     ),
   );
 }
