@@ -58,10 +58,26 @@ function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
     const container = containerRef.current;
     if (container === null) return;
 
+    // 跟随当前主题：默认 textColor 近乎黑色，深色主题下坐标轴标签会"隐形"。
+    const textColor = getComputedStyle(container).color || "#d1d4dc";
     const chart = createChart(container, {
       autoSize: true,
-      layout: { background: { color: "transparent" }, attributionLogo: true },
       height: 360,
+      layout: {
+        background: { color: "transparent" },
+        textColor,
+        attributionLogo: true,
+      },
+      grid: {
+        vertLines: { color: "rgba(128, 128, 128, 0.15)" },
+        horzLines: { color: "rgba(128, 128, 128, 0.15)" },
+      },
+      rightPriceScale: { borderColor: "rgba(128, 128, 128, 0.3)" },
+      timeScale: {
+        borderColor: "rgba(128, 128, 128, 0.3)",
+        timeVisible: true,
+        secondsVisible: false,
+      },
     });
     chartRef.current = chart;
 
@@ -85,6 +101,7 @@ function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
 
   return React.createElement("div", {
     ref: containerRef,
+    "data-trading-chart": "1",
     style: { width: "100%", height: "360px" },
   });
 }
