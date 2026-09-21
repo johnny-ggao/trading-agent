@@ -55,3 +55,37 @@ export interface RuleSignal {
   direction: "bullish" | "bearish";
   label: string;
 }
+
+/** 机械市场状态：为分析提供框架，本身不是结论。 */
+export interface MarketContext {
+  trend: {
+    adx: number | null;
+    pdi: number | null;
+    mdi: number | null;
+    state: "trending" | "ranging" | "transition";
+    direction: "up" | "down" | "flat";
+  };
+  volatility: {
+    atr: number | null;
+    /** ATR / 现价。 */
+    atrPct: number | null;
+    state: "high" | "normal" | "low";
+  };
+  volume: {
+    /** 最新一根量 / 近期均量。 */
+    ratio: number | null;
+    state: "high" | "normal" | "low";
+  };
+  maAlignment?: MaAlignment;
+  /** 人类可读的机械摘要。 */
+  summary: string;
+}
+
+/** 多周期共振：高周期定结构与方向，当前周期定时机。 */
+export interface TimeframeResonance {
+  higherInterval: string;
+  higher: MarketContext;
+  /** 高周期方向与当前周期方向是否一致。 */
+  aligned: boolean;
+  summary: string;
+}

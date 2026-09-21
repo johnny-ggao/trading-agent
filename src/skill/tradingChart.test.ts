@@ -53,4 +53,14 @@ describe("skill 正文教模型怎么用 trading_chart", () => {
   it("要求回答里声明所用默认", () => {
     expect(body).toContain("声明");
   });
+
+  it("教模型用市场状态与多周期共振", () => {
+    expect(body).toContain("市场状态");
+    expect(body).toContain("共振");
+  });
+
+  it("指标推荐只作文本、不改图", () => {
+    expect(body).toContain("指标推荐");
+    expect(body).toContain("不要改动图表");
+  });
 });

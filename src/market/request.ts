@@ -1,8 +1,10 @@
-import type { ChartCandidates, RuleSignal } from "../shared/analysis";
+import type { ChartCandidates, MarketContext, RuleSignal, TimeframeResonance } from "../shared/analysis";
 import type { Candle, ChartSpec, LinePoint, SeriesSpec } from "../shared/chartSpec";
 import { barsForInterval, buildChartSpec } from "./chart";
 import { computeCandidates } from "./candidates";
+import { computeMarketContext } from "./context";
 import { resolveChartRequest, type ChartRequest, type ResolvedChartRequest } from "./intent";
+import { computeResonance, higherInterval } from "./multiTimeframe";
 import { buildChartPresentation } from "./presentation";
 import { computeRuleSignals, type SignalInputs } from "./signals";
 import { resolveSymbol } from "./symbol";
@@ -15,6 +17,12 @@ export interface LoadedChart {
   bars: number;
   candidates: ChartCandidates;
   ruleSignals: RuleSignal[];
+}
+
+/** 规格里的 MarketView：图表 + 机械候选/信号 + 市场状态 + 多周期共振。 */
+export interface MarketView extends LoadedChart {
+  context: MarketContext;
+  resonance: TimeframeResonance;
 }
 
 /** 从指标 series 里取各均线最后一根的值（按周期升序）。 */
@@ -57,11 +65,8 @@ export function seriesSignalInputs(series: SeriesSpec[], lookback = 20): SignalI
   return inputs;
 }
 
-/** 把图表请求变成 chartSpec（宿主工具与 HTTP 端点共用同一条取数路径）。 */
-export async function loadChart(provider: MarketDataProvider, request: ChartRequest): Promise<LoadedChart> {
-  const resolved = resolveChartRequest(request);
-  const limit = barsForInterval(resolved.interval, resolved.indicators);
-  const candles = await provider.fetchCandles(resolved.symbol, resolved.interval, { limit });
+/** 由已取到的 K 线组装 chartSpec 与机械层（不含市场状态）。 */
+function assemble(resolved: ResolvedChartRequest, candles: Candle[]): LoadedChart {
   const baseSpec = buildChartSpec(resolveSymbol(resolved.symbol), resolved.interval, candles, resolved.indicators);
   const candidates = computeCandidates(candles, seriesMaValues(baseSpec.series));
   const ruleSignals = computeRuleSignals(candles, seriesSignalInputs(baseSpec.series));
@@ -73,6 +78,30 @@ export async function loadChart(provider: MarketDataProvider, request: ChartRequ
     ...(presentation.notes.length > 0 ? { notes: presentation.notes } : {}),
   };
   return { spec, resolved, bars: candles.length, candidates, ruleSignals };
+}
+
+/** 只取当前周期的 K 线并构图（HTTP 端点用这条，避免多余的高周期取数）。 */
+export async function loadChart(provider: MarketDataProvider, request: ChartRequest): Promise<LoadedChart> {
+  const resolved = resolveChartRequest(request);
+  const limit = barsForInterval(resolved.interval, resolved.indicators);
+  const candles = await provider.fetchCandles(resolved.symbol, resolved.interval, { limit });
+  return assemble(resolved, candles);
+}
+
+/** 完整 MarketView：当前周期图表 + 市场状态 + 高一级周期的共振（工具用这条）。 */
+export async function buildMarketView(provider: MarketDataProvider, request: ChartRequest): Promise<MarketView> {
+  const resolved = resolveChartRequest(request);
+  const limit = barsForInterval(resolved.interval, resolved.indicators);
+  const candles = await provider.fetchCandles(resolved.symbol, resolved.interval, { limit });
+  const loaded = assemble(resolved, candles);
+
+  const context = computeMarketContext(candles, resolved.indicators);
+  const higher = higherInterval(resolved.interval);
+  const higherCandles = await provider.fetchCandles(resolved.symbol, higher, {
+    limit: barsForInterval(higher, resolved.indicators),
+  });
+  const resonance = computeResonance(higher, computeMarketContext(higherCandles, resolved.indicators), context);
+  return { ...loaded, context, resonance };
 }
 
 /** 图卡控件把目标状态放在 URL 查询串里；缺省字段留给默认填充。 */

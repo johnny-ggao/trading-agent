@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { chartRequestFromQuery, loadChart } from "./request";
+import { buildMarketView, chartRequestFromQuery, loadChart } from "./request";
 import type { Candle } from "../shared/chartSpec";
 import type { MarketDataProvider } from "./types";
 
@@ -92,4 +92,28 @@ describe("loadChart 的机械层", () => {
     ]);
   });
 });
+
+const rising = Array.from({ length: 40 }, (_, i): Candle => {
+  const close = 100 + i;
+  return { time: i, open: i === 0 ? close : 100 + i - 1, high: close + 0.5, low: close - 0.5, close, volume: 10 };
+});
+
+function perIntervalProvider(map: Record<string, Candle[]>): MarketDataProvider {
+  return {
+    fetchCandles: async (_symbol, interval) => map[interval] ?? [],
+    fetchDerivatives: async (symbol) => ({ symbol }),
+  };
+}
+
+describe("buildMarketView（工具用：加市场状态与共振）", () => {
+  it("当前周期图表 + 市场状态 + 高一级周期共振", async () => {
+    const view = await buildMarketView(perIntervalProvider({ "1h": rising, "4h": rising }), { symbol: "BTC", timeframe: "1h" });
+    expect(view.spec.interval).toBe("1h");
+    expect(view.context.trend.state).toBe("trending");
+    expect(view.resonance.higherInterval).toBe("4h");
+    expect(view.resonance.aligned).toBe(true);
+    expect(view.resonance.summary).toContain("共振向上");
+  });
+});
+
 

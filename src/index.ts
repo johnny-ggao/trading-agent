@@ -3,7 +3,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { TOOL_NAME } from "./shared/tool";
 import { BinanceProvider } from "./market/binance";
 import { describeIndicators } from "./market/intent";
-import { chartRequestFromQuery, loadChart } from "./market/request";
+import { buildMarketView, chartRequestFromQuery, loadChart } from "./market/request";
 import { registerTradingChartSkill, type TradingChartSkill } from "./skill/tradingChart";
 
 /** 与 @deepseek-ai/dsh-util-values 的 JsonValue 结构等价，避免额外依赖。 */
@@ -85,6 +85,8 @@ export function apply(ctx: HostContext): void {
             indicators: { type: "string", required: true },
             candidates: { type: "json", required: true },
             ruleSignals: { type: "json", required: true },
+            context: { type: "json", required: true },
+            resonance: { type: "json", required: true },
             chartSpec: { type: "json", required: true },
           },
         },
@@ -96,13 +98,18 @@ export function apply(ctx: HostContext): void {
           {
             type: "text",
             text: "机械数据（确定性计算，未作判断）："
-              + JSON.stringify({ candidates: value.candidates, ruleSignals: value.ruleSignals }),
+              + JSON.stringify({
+                candidates: value.candidates,
+                ruleSignals: value.ruleSignals,
+                context: value.context,
+                resonance: value.resonance,
+              }),
           },
         ],
         presentationMeta: (_args, value) => value.chartSpec,
       },
       execute: async (args) => {
-        const { spec, resolved, bars, candidates, ruleSignals } = await loadChart(provider, {
+        const { spec, resolved, bars, candidates, ruleSignals, context, resonance } = await buildMarketView(provider, {
           symbol: args.symbol,
           timeframe: args.timeframe,
           ma: args.ma,
@@ -118,6 +125,8 @@ export function apply(ctx: HostContext): void {
           indicators: describeIndicators(resolved.indicators),
           candidates: candidates as unknown as Json,
           ruleSignals: ruleSignals as unknown as Json,
+          context: context as unknown as Json,
+          resonance: resonance as unknown as Json,
           chartSpec: spec as unknown as Json,
         };
       },
