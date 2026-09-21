@@ -31,6 +31,17 @@ export interface PaneSpec {
   title?: string;
 }
 
+/** 图卡控件回传目标状态时需要的当前指标开关。 */
+export interface ChartControls {
+  /** 当前均线周期。 */
+  ma: number[];
+  /** RSI 周期；null 表示关闭。 */
+  rsi: number | null;
+  bollinger: boolean;
+  kdj: boolean;
+  atr: boolean;
+}
+
 /** 宿主 ↔ 客户端唯一契约：宿主产出它，客户端把它渲染出来。 */
 export interface ChartSpec {
   symbol: string;
@@ -39,4 +50,6 @@ export interface ChartSpec {
   panes: PaneSpec[];
   series: SeriesSpec[];
   formingBar?: boolean;
+  /** 图卡控件的当前状态；缺省表示不渲染控件。 */
+  controls?: ChartControls;
 }

@@ -79,5 +79,19 @@ export function buildChartSpec(
     { id: "candles", type: "candlestick", pane: "price", data: candles },
     ...computeIndicators(candles, config),
   ];
-  return { symbol, interval, timeframes: DEFAULT_TIMEFRAMES, panes, series, formingBar: true };
+  return {
+    symbol,
+    interval,
+    timeframes: DEFAULT_TIMEFRAMES,
+    panes,
+    series,
+    formingBar: true,
+    controls: {
+      ma: [...config.ma],
+      rsi: config.rsi ?? null,
+      bollinger: config.bollinger !== undefined,
+      kdj: config.kdj !== undefined,
+      atr: config.atr !== undefined,
+    },
+  };
 }

@@ -1,9 +1,9 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import { defineTool } from "@deepseek-ai/dsh-tools";
 import { TOOL_NAME } from "./shared/tool";
 import { BinanceProvider } from "./market/binance";
-import { resolveSymbol } from "./market/symbol";
-import { barsForInterval, buildChartSpec } from "./market/chart";
-import { describeIndicators, resolveChartRequest } from "./market/intent";
+import { describeIndicators } from "./market/intent";
+import { chartRequestFromQuery, loadChart } from "./market/request";
 import { registerTradingChartSkill, type TradingChartSkill } from "./skill/tradingChart";
 
 /** 与 @deepseek-ai/dsh-util-values 的 JsonValue 结构等价，避免额外依赖。 */
@@ -15,16 +15,49 @@ export const name = "trading-agent";
 /** 所需服务：工具注册表与 skill 注册表。 */
 export const inject = ["tools", "skills"];
 
+interface WebServerLike {
+  register(route: {
+    kind: "exact" | "prefix";
+    path: string;
+    handler: (req: IncomingMessage, res: ServerResponse) => void | Promise<void>;
+  }): () => void;
+}
+
 interface HostContext {
   tools: { register(tool: ReturnType<typeof defineTool>): unknown };
   skills: { register(skill: TradingChartSkill): unknown };
+  /** Cordis 动态依赖：webServer 可用后才注册 HTTP 端点，非 web profile 不受影响。 */
+  inject(deps: string[], callback: (ctx: { webServer: WebServerLike }) => void): unknown;
 }
 
 const provider = new BinanceProvider();
 
+/** 图卡控件点按钮时请求的端点：直接返回一份新 chartSpec（不经过模型）。 */
+const CHART_ROUTE = "/trading-agent/chart";
+
+function chartRouteHandler(): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
+  return async (req, res) => {
+    try {
+      const url = new URL(req.url ?? "/", "http://127.0.0.1");
+      const { spec } = await loadChart(provider, chartRequestFromQuery(url.searchParams));
+      res.writeHead(200, {
+        "content-type": "application/json; charset=utf-8",
+        "cache-control": "no-store",
+      });
+      res.end(JSON.stringify({ ok: true, chartSpec: spec }));
+    } catch (error) {
+      res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
+      res.end(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }));
+    }
+  };
+}
+
 /** 注册随包 skill 与 trading_chart 工具（数据来自 Binance 现货；支持时间词与指标覆盖）。 */
 export function apply(ctx: HostContext): void {
   registerTradingChartSkill(ctx.skills);
+  ctx.inject(["webServer"], ({ webServer }) => {
+    webServer.register({ kind: "exact", path: CHART_ROUTE, handler: chartRouteHandler() });
+  });
   ctx.tools.register(
     defineTool({
       name: TOOL_NAME,
@@ -62,7 +95,7 @@ export function apply(ctx: HostContext): void {
         presentationMeta: (_args, value) => value.chartSpec,
       },
       execute: async (args) => {
-        const resolved = resolveChartRequest({
+        const { spec, resolved, bars } = await loadChart(provider, {
           symbol: args.symbol,
           timeframe: args.timeframe,
           ma: args.ma,
@@ -71,16 +104,12 @@ export function apply(ctx: HostContext): void {
           kdj: args.kdj,
           atr: args.atr,
         });
-        const market = resolveSymbol(resolved.symbol);
-        const limit = barsForInterval(resolved.interval, resolved.indicators);
-        const candles = await provider.fetchCandles(resolved.symbol, resolved.interval, { limit });
-        const chartSpec = buildChartSpec(market, resolved.interval, candles, resolved.indicators);
         return {
-          symbol: chartSpec.symbol,
+          symbol: spec.symbol,
           interval: resolved.interval,
-          bars: candles.length,
+          bars,
           indicators: describeIndicators(resolved.indicators),
-          chartSpec: chartSpec as unknown as Json,
+          chartSpec: spec as unknown as Json,
         };
       },
     }),
