@@ -4,6 +4,14 @@
   "description": "DSH 插件：在对话中内联渲染加密行情技术分析图表",
   "keywords": ["dsh", "dsh-plugin", "trading", "crypto", "technical-analysis", "lightweight-charts"],
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/johnny-ggao/trading-agent.git"
+  },
+  "homepage": "https://github.com/johnny-ggao/trading-agent#readme",
+  "bugs": {
+    "url": "https://github.com/johnny-ggao/trading-agent/issues"
+  },
   "type": "module",
   "main": "./lib/index.js",
   "exports": {
