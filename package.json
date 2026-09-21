@@ -2,6 +2,7 @@
   "name": "dsh-trading-agent",
   "version": "0.0.0",
   "description": "DSH 插件：在对话中内联渲染加密行情技术分析图表",
+  "keywords": ["dsh", "dsh-plugin", "trading", "crypto", "technical-analysis", "lightweight-charts"],
   "license": "MIT",
   "type": "module",
   "main": "./lib/index.js",
@@ -14,7 +15,8 @@
     "assets",
     "cordis.patch.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
   ],
   "dsh": {
     "bundle": {
@@ -30,7 +32,8 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prepack": "pnpm run build"
   },
   "dependencies": {
     "@deepseek-ai/dsh-tools": "0.1.6-alpha.1",

@@ -8,3 +8,6 @@ lib/
 prototype/**/bundle.js
 .npm-cache/
 .npm-logs/
+
+# 由 skills CLI 本地安装；DSH 读取的是已纳入版本控制的 .agents/skills
+skills/
