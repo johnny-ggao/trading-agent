@@ -38,8 +38,8 @@ export function describeIndicators(config: IndicatorConfig): string {
     `MA${config.ma.join("/")}`,
     "成交量",
     `MACD(${config.macd.fast},${config.macd.slow},${config.macd.signal})`,
-    `RSI(${config.rsi})`,
   ];
+  if (config.rsi !== undefined) parts.push(`RSI(${config.rsi})`);
   if (config.bollinger !== undefined) parts.push(`BOLL(${config.bollinger.period},${config.bollinger.deviation})`);
   if (config.kdj !== undefined) parts.push(`KDJ(${config.kdj.kPeriod},${config.kdj.dPeriod},${config.kdj.kSlowingPeriod})`);
   if (config.atr !== undefined) parts.push(`ATR(${config.atr})`);

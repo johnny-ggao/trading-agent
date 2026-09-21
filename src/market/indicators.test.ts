@@ -36,17 +36,18 @@ describe("computeIndicators", () => {
     ]);
   });
 
-  it("默认指标：主图 MA20/50/200 + 副图 MACD/RSI/量", () => {
+  it("默认指标：主图 MA20/50/200 + 副图 MACD/量（不含 RSI）", () => {
     const spec = buildChartSpec("BTCUSDT", "1h", makeCandles(300));
-    expect(spec.panes.map((p) => p.id)).toEqual(["price", "volume", "macd", "rsi"]);
+    expect(spec.panes.map((p) => p.id)).toEqual(["price", "volume", "macd"]);
     const ids = spec.series.map((s) => s.id);
-    for (const id of ["candles", "ma20", "ma50", "ma200", "macd", "macdSignal", "macdHist", "rsi14", "volume"]) {
+    for (const id of ["candles", "ma20", "ma50", "ma200", "macd", "macdSignal", "macdHist", "volume"]) {
       expect(ids).toContain(id);
     }
+    expect(ids).not.toContain("rsi14");
   });
 
-  it("RSI 值落在 0..100", () => {
-    const spec = buildChartSpec("BTCUSDT", "1h", makeCandles(300));
+  it("RSI 值落在 0..100（显式开启时）", () => {
+    const spec = buildChartSpec("BTCUSDT", "1h", makeCandles(300), { ...DEFAULT_INDICATORS, rsi: 14 });
     const rsi = spec.series.find((s) => s.id === "rsi14");
     const points = rsi?.data as LinePoint[];
     expect(points.length).toBeGreaterThan(0);

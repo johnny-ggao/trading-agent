@@ -4,7 +4,8 @@ import type { Candle, LinePoint, SeriesSpec } from "../shared/chartSpec";
 export interface IndicatorConfig {
   ma: number[];
   macd: { fast: number; slow: number; signal: number };
-  rsi: number;
+  /** 可选：RSI 周期；不提供则不显示 RSI（默认关闭）。 */
+  rsi?: number;
   volume: boolean;
   /** 可选：布林带（主图）。 */
   bollinger?: { period: number; deviation: number };
@@ -17,7 +18,6 @@ export interface IndicatorConfig {
 export const DEFAULT_INDICATORS: IndicatorConfig = {
   ma: [20, 50, 200],
   macd: { fast: 12, slow: 26, signal: 9 },
-  rsi: 14,
   volume: true,
 };
 
@@ -97,15 +97,17 @@ export function computeIndicators(candles: Candle[], config: IndicatorConfig = D
   series.push({ id: "macdSignal", type: "line", pane: "macd", data: signalLine, label: "DEA", options: { color: SIGNAL_COLOR, lineWidth: 1 } });
   series.push({ id: "macdHist", type: "histogram", pane: "macd", data: histogram, label: "Hist" });
 
-  const rsi = new RSI(config.rsi);
-  series.push({
-    id: `rsi${config.rsi}`,
-    type: "line",
-    pane: "rsi",
-    data: toLinePoints(candles, rsi.updates(closes)),
-    label: `RSI(${config.rsi})`,
-    options: { color: RSI_COLOR, lineWidth: 1 },
-  });
+  if (config.rsi !== undefined) {
+    const rsi = new RSI(config.rsi);
+    series.push({
+      id: `rsi${config.rsi}`,
+      type: "line",
+      pane: "rsi",
+      data: toLinePoints(candles, rsi.updates(closes)),
+      label: `RSI(${config.rsi})`,
+      options: { color: RSI_COLOR, lineWidth: 1 },
+    });
+  }
 
   if (config.bollinger !== undefined) {
     const bb = new BollingerBands(config.bollinger.period, config.bollinger.deviation);

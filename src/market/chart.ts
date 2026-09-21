@@ -27,7 +27,7 @@ export function requiredWarmupBars(config: IndicatorConfig = DEFAULT_INDICATORS)
     ? 0
     : config.kdj.kPeriod + config.kdj.kSlowingPeriod + config.kdj.dPeriod;
   const atrWarmup = config.atr ?? 0;
-  return Math.max(maMax, config.rsi, macdWarmup, bollingerWarmup, kdjWarmup, atrWarmup);
+  return Math.max(maMax, config.rsi ?? 0, macdWarmup, bollingerWarmup, kdjWarmup, atrWarmup);
 }
 
 /** 取根数的策略：只有这三个旋钮，根数是算出来的。 */
@@ -71,7 +71,7 @@ export function buildChartSpec(
     { id: "price", title: "价格" },
     ...(config.volume ? [{ id: "volume", title: "成交量" }] : []),
     { id: "macd", title: "MACD" },
-    { id: "rsi", title: `RSI ${config.rsi}` },
+    ...(config.rsi !== undefined ? [{ id: "rsi", title: `RSI ${config.rsi}` }] : []),
     ...(config.kdj !== undefined ? [{ id: "kdj", title: "KDJ" }] : []),
     ...(config.atr !== undefined ? [{ id: "atr", title: `ATR ${config.atr}` }] : []),
   ];

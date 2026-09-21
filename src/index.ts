@@ -27,12 +27,13 @@ export function apply(ctx: HostContext): void {
       name: TOOL_NAME,
       description:
         "画一张加密行情技术分析图并渲染到对话中。数据来自 Binance 现货。"
-        + "周期可传 15m/1h/4h/1d 或时间词（今天/这周/这月/短线）；指标可覆盖均线周期与 RSI，并可按需开启布林带/KDJ/ATR。",
+        + "周期可传 15m/1h/4h/1d 或时间词（今天/这周/这月/短线）；可覆盖均线周期（ma），"
+        + "RSI 默认关闭（传 rsi 周期即显示），布林带/KDJ/ATR 也按需开启。",
       parameters: {
         symbol: { type: "string", description: "交易对或币种，例如 BTC 或 BTCUSDT。" },
         timeframe: { type: "string", description: "周期或时间词：15m/1h/4h/1d，或 今天/这周/这月/短线。" },
         ma: { type: "array", items: { type: "number" }, description: "均线周期覆盖，例如 [50, 200]。" },
-        rsi: { type: "number", description: "RSI 周期覆盖，默认 14。" },
+        rsi: { type: "number", description: "RSI 周期；传值即显示 RSI（如 14），不传则不显示。" },
         bollinger: { type: "boolean", description: "是否叠加布林带（默认关闭）。" },
         kdj: { type: "boolean", description: "是否显示 KDJ 副图（默认关闭）。" },
         atr: { type: "boolean", description: "是否显示 ATR 副图（默认关闭）。" },

@@ -33,10 +33,13 @@ describe("解析图表请求（默认填充 + 覆盖）", () => {
 });
 
 describe("描述所用指标（让回答能声明默认）", () => {
-  it("列出默认指标", () => {
+  it("列出默认指标（默认不含 RSI）", () => {
     const text = describeIndicators(DEFAULT_INDICATORS);
     expect(text).toContain("MA20/50/200");
-    expect(text).toContain("RSI(14)");
+    expect(text).not.toContain("RSI");
+  });
+  it("提供 RSI 周期时才列出 RSI", () => {
+    expect(describeIndicators({ ...DEFAULT_INDICATORS, rsi: 14 })).toContain("RSI(14)");
   });
   it("开启的额外指标会被列出", () => {
     const text = describeIndicators({ ...DEFAULT_INDICATORS, bollinger: { period: 20, deviation: 2 }, atr: 14 });
