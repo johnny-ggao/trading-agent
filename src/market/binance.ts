@@ -21,6 +21,7 @@ export function parseKlines(raw: unknown): Candle[] {
       high: Number(row[2]),
       low: Number(row[3]),
       close: Number(row[4]),
+      volume: Number(row[5]),
     };
   });
 }

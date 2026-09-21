@@ -2,7 +2,7 @@ import { defineTool } from "@deepseek-ai/dsh-tools";
 import { TOOL_NAME } from "./shared/tool";
 import { BinanceProvider } from "./market/binance";
 import { resolveSymbol } from "./market/symbol";
-import { buildCandleSpec } from "./market/chart";
+import { buildChartSpec } from "./market/chart";
 
 /** 与 @deepseek-ai/dsh-util-values 的 JsonValue 结构等价，避免额外依赖。 */
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -53,7 +53,7 @@ export function apply(ctx: HostContext): void {
         const interval = args.interval !== undefined ? String(args.interval) : "1h";
         const market = resolveSymbol(symbol);
         const candles = await provider.fetchCandles(symbol, interval, { limit: 300 });
-        const chartSpec = buildCandleSpec(market, interval, candles);
+        const chartSpec = buildChartSpec(market, interval, candles);
         return {
           symbol: chartSpec.symbol,
           interval,

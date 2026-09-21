@@ -53,6 +53,9 @@ function isChartSpec(value: unknown): value is ChartSpec {
 function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
+  // 窗格越多整体越高，主图通过 stretchFactor 占更大比例。
+  const paneCount = Math.max(1, props.spec.panes.length);
+  const height = paneCount <= 1 ? 360 : 300 + paneCount * 80;
 
   React.useEffect(() => {
     const container = containerRef.current;
@@ -62,7 +65,7 @@ function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
     const textColor = getComputedStyle(container).color || "#d1d4dc";
     const chart = createChart(container, {
       autoSize: true,
-      height: 360,
+      height,
       layout: {
         background: { color: "transparent" },
         textColor,
@@ -93,16 +96,18 @@ function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
       }
     });
 
+    chart.panes().forEach((pane, index) => pane.setStretchFactor(index === 0 ? 2 : 1));
+
     return () => {
       chart.remove();
       chartRef.current = null;
     };
-  }, [props.spec]);
+  }, [props.spec, height]);
 
   return React.createElement("div", {
     ref: containerRef,
     "data-trading-chart": "1",
-    style: { width: "100%", height: "360px" },
+    style: { width: "100%", height: `${height}px` },
   });
 }
 

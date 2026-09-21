@@ -14,6 +14,9 @@ importers:
       lightweight-charts:
         specifier: ^5.0.0
         version: 5.2.1
+      trading-signals:
+        specifier: ^8.3.0
+        version: 8.3.0
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -840,6 +843,9 @@ packages:
     resolution: {integrity: sha512-u8KszXvGfU68hVcZpRHKG28T0krMuv2G5nDhiHaMLen/gIuFEgIJhaJuO69qjnXg5paSrbPMFfx3brNuN8eVSg==}
     engines: {node: '>=14.0.0'}
 
+  trading-signals@8.3.0:
+    resolution: {integrity: sha512-C2DigYcuaBmTfLJ4KkCgM6TPZwKoFYz9Tyj2BWnTgMVMb3u21udF80oGPhqGyyd57RPJnrst3pc0ShA09XVUAw==}
+
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
     engines: {node: '>=14.17'}
@@ -1555,6 +1561,8 @@ snapshots:
   tinyrainbow@2.0.0: {}
 
   tinyspy@4.0.6: {}
+
+  trading-signals@8.3.0: {}
 
   typescript@5.9.3: {}
 

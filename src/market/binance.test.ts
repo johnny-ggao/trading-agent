@@ -13,7 +13,7 @@ function res(body: unknown, status = 200, headers: Record<string, string> = {}):
 describe("parseKlines", () => {
   it("把 Binance 数组解析为领域 Candle（time 用秒）", () => {
     expect(parseKlines([kline(1_700_000_000_000, 101)])).toEqual([
-      { time: 1_700_000_000, open: 1, high: 2, low: 0.5, close: 101 },
+      { time: 1_700_000_000, open: 1, high: 2, low: 0.5, close: 101, volume: 10 },
     ]);
   });
 });

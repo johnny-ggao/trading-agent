@@ -4,11 +4,14 @@ export interface Candle {
   high: number;
   low: number;
   close: number;
+  volume?: number;
 }
 
 export interface LinePoint {
   time: number;
   value: number;
+  /** 直方图可选的逐点颜色。 */
+  color?: string;
 }
 
 export type SeriesType = "candlestick" | "line" | "histogram";
