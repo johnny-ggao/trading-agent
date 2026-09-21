@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Candle, LinePoint } from "../shared/chartSpec";
-import { computeIndicators } from "./indicators";
+import { computeIndicators, VOLUME_UP_COLOR, VOLUME_DOWN_COLOR } from "./indicators";
 import { buildChartSpec } from "./chart";
 
 function makeCandles(n: number, start = 1_700_000_000): Candle[] {
@@ -54,6 +54,24 @@ describe("computeIndicators", () => {
       expect(p.value).toBeGreaterThanOrEqual(0);
       expect(p.value).toBeLessThanOrEqual(100);
     }
+  });
+
+  it("成交量按该根涨跌着色（涨绿跌红）", () => {
+    const candles: Candle[] = [
+      { time: 1, open: 1, high: 2, low: 0.5, close: 2, volume: 10 },
+      { time: 2, open: 2, high: 2, low: 1, close: 1, volume: 20 },
+    ];
+    const series = computeIndicators(candles, {
+      ma: [], macd: { fast: 12, slow: 26, signal: 9 }, rsi: 14, volume: true,
+    });
+    const volume = series.find((s) => s.id === "volume");
+    const points = volume?.data as LinePoint[];
+    // 先断言常量本身有值，否则 undefined === undefined 会假绿。
+    expect(typeof VOLUME_UP_COLOR).toBe("string");
+    expect(typeof VOLUME_DOWN_COLOR).toBe("string");
+    expect(points[0]?.color).toBe(VOLUME_UP_COLOR);
+    expect(points[1]?.color).toBe(VOLUME_DOWN_COLOR);
+    expect(points[0]?.color).not.toBe(points[1]?.color);
   });
 
   it("MACD 直方图逐点带颜色", () => {

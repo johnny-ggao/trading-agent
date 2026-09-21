@@ -19,9 +19,11 @@ const MA_COLORS: Record<number, string> = { 20: "#f5a623", 50: "#4a90d9", 200: "
 const MACD_COLOR = "#4a90d9";
 const SIGNAL_COLOR = "#f5a623";
 const RSI_COLOR = "#b06bd6";
-const UP_COLOR = "rgba(38, 166, 154, 0.7)";
-const DOWN_COLOR = "rgba(239, 83, 80, 0.7)";
-const VOLUME_COLOR = "rgba(120, 123, 134, 0.45)";
+export const UP_COLOR = "rgba(38, 166, 154, 0.7)";
+export const DOWN_COLOR = "rgba(239, 83, 80, 0.7)";
+/** 成交量：涨绿跌红（按该根 K 线的收盘 vs 开盘）。 */
+export const VOLUME_UP_COLOR = "rgba(38, 166, 154, 0.5)";
+export const VOLUME_DOWN_COLOR = "rgba(239, 83, 80, 0.5)";
 
 /** 把指标输出序列对齐到 K 线时间，跳过预热期的 null。 */
 function toLinePoints(candles: Candle[], values: ReadonlyArray<number | null>): LinePoint[] {
@@ -43,7 +45,11 @@ export function computeIndicators(candles: Candle[], config: IndicatorConfig = D
     const data: LinePoint[] = [];
     for (const candle of candles) {
       if (candle.volume !== undefined && Number.isFinite(candle.volume)) {
-        data.push({ time: candle.time, value: candle.volume });
+        data.push({
+          time: candle.time,
+          value: candle.volume,
+          color: candle.close >= candle.open ? VOLUME_UP_COLOR : VOLUME_DOWN_COLOR,
+        });
       }
     }
     series.push({
@@ -52,7 +58,7 @@ export function computeIndicators(candles: Candle[], config: IndicatorConfig = D
       pane: "volume",
       data,
       label: "VOL",
-      options: { color: VOLUME_COLOR, priceFormat: { type: "volume" } },
+      options: { priceFormat: { type: "volume" } },
     });
   }
 
