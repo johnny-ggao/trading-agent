@@ -8,3 +8,7 @@
 - 官方 MCP 缺少图表图像这一点无关紧要：我们自己渲染交互式图表（ADR-0001），如果模型需要查看，就把我们自己的 canvas 栅格化。
 - 社区版 TradingView MCP 服务器也被排除：非官方、基于抓取，且不授予任何数据权利。
 - 如果 TradingView 将来提供其条款适合开源自动化智能体的授权数据 API，这个决定值得重新审视。
+
+## 状态 (Status)
+
+superseded by [ADR-0005](./0005-tradingview-mcp-optional-mount.md)（2026-09-21）：官方 MCP 是 host-agnostic 的、其指标快照说明 agent 分析属预期用法，因此改为"可选挂载、用户自带账号"并明确了边界。
