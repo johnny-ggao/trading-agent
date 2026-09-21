@@ -24,3 +24,15 @@ pnpm run build      # 产出 lib/index.js（宿主）与 lib/client.js（客户�
 pnpm test           # Vitest
 pnpm run typecheck
 ```
+
+## 重载开发
+
+改完插件代码后，一条命令重建并重启：
+
+```sh
+./reload.sh
+```
+
+- `./reload.sh --no-restart`：只构建。客户端半边在运行中的 DSH 里通常由 `dsh-client-hmr` 自动热更；**宿主半边**改动才需要重启。
+- 默认重启 `desktop` profile 的桌面应用；用 `DSH_PROFILE=web ./reload.sh` 可切换。
+- 重启日志写到 `.reload.log`（已 gitignore）。
