@@ -1,23 +1,58 @@
 import type { Candle, ChartSpec, PaneSpec, SeriesSpec } from "../shared/chartSpec";
 import { computeIndicators, DEFAULT_INDICATORS, type IndicatorConfig } from "./indicators";
 
-/** 工单 02 的默认周期集合（工单 04 会做时间词映射）。 */
+/** 默认周期集合（工单 04 会做时间词映射）。 */
 export const DEFAULT_TIMEFRAMES = ["15m", "1h", "4h", "1d"];
 
-/** 每个周期默认取多少根 K 线：周期越短取得越多，保证可比的"视野"。 */
-export const BARS_BY_INTERVAL: Record<string, number> = {
-  "15m": 800,
-  "1h": 600,
-  "4h": 500,
-  "1d": 400,
+const INTERVAL_UNITS: Record<string, number> = {
+  m: 60_000,
+  h: 3_600_000,
+  d: 86_400_000,
+  w: 604_800_000,
 };
-export const DEFAULT_BARS = 500;
-/** 下限：至少覆盖最长指标（MA200）的预热期并留出余量。 */
-export const MIN_BARS = 250;
 
-/** 由周期决定 K 线根数，并保证不低于指标预热期下限。 */
-export function barsForInterval(interval: string, minBars: number = MIN_BARS): number {
-  return Math.max(BARS_BY_INTERVAL[interval] ?? DEFAULT_BARS, minBars);
+/** 把周期串（如 15m/1h/4h/1d）转成毫秒。 */
+export function intervalToMs(interval: string): number {
+  const match = /^(\d+)([mhdw])$/.exec(interval.trim());
+  if (match === null) throw new Error(`unsupported interval: ${interval}`);
+  return Number(match[1]) * (INTERVAL_UNITS[match[2]!] ?? 0);
+}
+
+/** 指标所需的最短预热根数——由指标参数推导，不写死。 */
+export function requiredWarmupBars(config: IndicatorConfig = DEFAULT_INDICATORS): number {
+  const maMax = config.ma.length > 0 ? Math.max(...config.ma) : 0;
+  const macdWarmup = config.macd.fast + config.macd.slow + config.macd.signal;
+  return Math.max(maMax, config.rsi, macdWarmup);
+}
+
+/** 取根数的策略：只有这三个旋钮，根数是算出来的。 */
+export interface BarPolicy {
+  /** 目标回看时长（毫秒）：周期越短，同样时长对应的根数越多。 */
+  lookbackMs: number;
+  /** 指标预热期之外再多留的上下文根数。 */
+  minContextBars: number;
+  /** 单次分析请求的上限。 */
+  maxBars: number;
+}
+
+export const DEFAULT_BAR_POLICY: BarPolicy = {
+  lookbackMs: 30 * 24 * 60 * 60 * 1000,
+  minContextBars: 100,
+  maxBars: 1000,
+};
+
+/**
+ * 由周期 + 指标预热期推导应取多少根 K 线：
+ * 先按目标回看时长算，再抬到预热下限，最后压到上限。
+ */
+export function barsForInterval(
+  interval: string,
+  config: IndicatorConfig = DEFAULT_INDICATORS,
+  policy: BarPolicy = DEFAULT_BAR_POLICY,
+): number {
+  const byLookback = Math.ceil(policy.lookbackMs / intervalToMs(interval));
+  const floor = requiredWarmupBars(config) + policy.minContextBars;
+  return Math.min(Math.max(byLookback, floor), policy.maxBars);
 }
 
 /** 由 K 线 + 默认指标构造可渲染的 chartSpec。 */
