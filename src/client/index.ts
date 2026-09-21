@@ -17,7 +17,14 @@ export const inject = ["slots"];
 interface SlotsService {
   inject(name: string, callback: () => unknown): void;
   register(
-    declaration: { name: string; id?: string; key?: string; order?: number },
+    declaration: {
+      name: string;
+      id?: string;
+      key?: string;
+      order?: number;
+      priority?: number;
+      select?: (...args: unknown[]) => unknown;
+    },
     component: unknown,
   ): unknown;
 }
@@ -140,7 +147,13 @@ function TradingChartTail(props: ChartTailProps): React.ReactElement | null {
 export function apply(ctx: ClientContext): void {
   ctx.slots.inject("conversation.chat.turnTail", () =>
     ctx.slots.register(
-      { name: "conversation.chat.turnTail", id: "trading-chart", order: 0 },
+      {
+        name: "conversation.chat.turnTail",
+        priority: 0,
+        // alpha.1 把该槽声明为 chain：注册必须带 select。我们总是接受，
+        // 由组件在本回合没有 trading_chart 时返回 null。
+        select: () => true,
+      },
       TradingChartTail,
     ),
   );

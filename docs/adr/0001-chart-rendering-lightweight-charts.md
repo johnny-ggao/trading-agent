@@ -16,3 +16,5 @@ accepted
 ## 渲染位置
 
 图表渲染在**回合末尾**（`conversation.chat.turnTail` 槽），而**不是**工具卡（`tool.call.toolview`）。这样它出现在助手最终回答之后、操作行之前，读起来就是"回复的一部分"。宿主工具通过 `presentationMeta` 把 `chartSpec` 交给客户端；客户端在该回合的工具结果节点（`tool-call` 的 `data.root.meta`）里找到它并渲染。助手正文本身只支持文本与图片，无法承载自定义交互组件，所以自定义 UI 只能落在槽位里。
+
+这次修复暴露了一个必须记住的事实：**已安装的 dsh（0.1.6-alpha.1）与源码检出（0.1.6-alpha.2）在槽位声明上不一致**。alpha.1 把 `conversation.chat.turnTail` 声明为 **chain**（注册必须带 `options.select`，第一个接受的条目渲染）；alpha.2 才改成 **list**。我们按 list 注册，插件 apply 时抛 `chain slot ... requires options.select`，整条贡献被丢弃——于是工具图没了、末尾图也没出现。注册因此写成 chain 形态：`select` 总是接受，由组件在本回合没有 `trading_chart` 结果时返回 null。**实现必须以已安装运行时（alpha.1）的契约为准，而不是源码检出。**
