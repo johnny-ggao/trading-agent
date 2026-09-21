@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { Candle, LinePoint } from "../shared/chartSpec";
-import { computeIndicators, VOLUME_UP_COLOR, VOLUME_DOWN_COLOR } from "./indicators";
+import { computeIndicators, DEFAULT_INDICATORS, VOLUME_UP_COLOR, VOLUME_DOWN_COLOR } from "./indicators";
 import { buildChartSpec } from "./chart";
 
 function makeCandles(n: number, start = 1_700_000_000): Candle[] {
@@ -72,6 +72,39 @@ describe("computeIndicators", () => {
     expect(points[0]?.color).toBe(VOLUME_UP_COLOR);
     expect(points[1]?.color).toBe(VOLUME_DOWN_COLOR);
     expect(points[0]?.color).not.toBe(points[1]?.color);
+  });
+
+  it("布林/KDJ/ATR 默认关闭，按需开启", () => {
+    const off = computeIndicators(makeCandles(300)).map((s) => s.id);
+    expect(off).not.toContain("bbUpper");
+    expect(off).not.toContain("kdjK");
+    expect(off).not.toContain("atr14");
+
+    const config = {
+      ...DEFAULT_INDICATORS,
+      bollinger: { period: 20, deviation: 2 },
+      kdj: { kPeriod: 9, dPeriod: 3, kSlowingPeriod: 3 },
+      atr: 14,
+    };
+    const on = computeIndicators(makeCandles(300), config);
+    const ids = on.map((s) => s.id);
+    for (const id of ["bbUpper", "bbMiddle", "bbLower", "kdjK", "kdjD", "kdjJ", "atr14"]) {
+      expect(ids).toContain(id);
+    }
+    expect(on.find((s) => s.id === "bbUpper")?.pane).toBe("price");
+    expect(on.find((s) => s.id === "kdjK")?.pane).toBe("kdj");
+    expect(on.find((s) => s.id === "atr14")?.pane).toBe("atr");
+  });
+
+  it("开启后 chartSpec 增加 KDJ/ATR 窗格", () => {
+    const spec = buildChartSpec("BTCUSDT", "1h", makeCandles(300), {
+      ...DEFAULT_INDICATORS,
+      kdj: { kPeriod: 9, dPeriod: 3, kSlowingPeriod: 3 },
+      atr: 14,
+    });
+    const paneIds = spec.panes.map((p) => p.id);
+    expect(paneIds).toContain("kdj");
+    expect(paneIds).toContain("atr");
   });
 
   it("MACD 直方图逐点带颜色", () => {
