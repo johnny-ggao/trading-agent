@@ -64,3 +64,52 @@ describe("BinanceProvider.fetchCandles", () => {
     expect(calls).toBe(1);
   });
 });
+describe("BinanceProvider 多主机回退", () => {
+  it("默认首选 api.binance.com", async () => {
+    const urls: string[] = [];
+    const fetchImpl: FetchLike = async (url) => {
+      urls.push(url);
+      return res([kline(1_700_000_000_000, 101)]);
+    };
+    const provider = new BinanceProvider({ fetch: fetchImpl, cacheTtlMs: 0 });
+    await provider.fetchCandles("BTC", "1h", { limit: 1 });
+    expect(new URL(urls[0]!).host).toBe("api.binance.com");
+  });
+
+  it("首个主机传输失败时回退到下一个主机", async () => {
+    const urls: string[] = [];
+    const fetchImpl: FetchLike = async (url) => {
+      urls.push(url);
+      if (new URL(url).host === "api.binance.com") throw new TypeError("fetch failed");
+      return res([kline(1_700_000_000_000, 101)]);
+    };
+    const provider = new BinanceProvider({ fetch: fetchImpl, cacheTtlMs: 0 });
+    const candles = await provider.fetchCandles("BTC", "1h", { limit: 1 });
+    expect(candles).toHaveLength(1);
+    expect(new URL(urls[0]!).host).toBe("api.binance.com");
+    expect(new URL(urls[1]!).host).toBe("api1.binance.com");
+  });
+
+  it("全部主机失败时抛带主机上下文的错误", async () => {
+    const urls: string[] = [];
+    const fetchImpl: FetchLike = async (url) => {
+      urls.push(url);
+      throw new TypeError("fetch failed");
+    };
+    const provider = new BinanceProvider({ fetch: fetchImpl, cacheTtlMs: 0 });
+    await expect(provider.fetchCandles("BTC", "1h", { limit: 1 })).rejects.toThrow(/api\.binance\.com/);
+    expect(urls).toHaveLength(3);
+  });
+
+  it("显式 baseUrl 时只请求该主机", async () => {
+    const urls: string[] = [];
+    const fetchImpl: FetchLike = async (url) => {
+      urls.push(url);
+      throw new TypeError("fetch failed");
+    };
+    const provider = new BinanceProvider({ fetch: fetchImpl, cacheTtlMs: 0, baseUrl: "https://example.test" });
+    await expect(provider.fetchCandles("BTC", "1h", { limit: 1 })).rejects.toThrow();
+    expect(urls).toEqual(["https://example.test/api/v3/klines?symbol=BTCUSDT&interval=1h&limit=1"]);
+  });
+});
+

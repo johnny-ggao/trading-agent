@@ -3,7 +3,10 @@ import type { DerivativesSnapshot, FetchLike, HttpResponseLike, MarketDataProvid
 import { resolveSymbol } from "./symbol";
 
 export interface BinanceProviderOptions {
+  /** 显式指定单个主机（优先级最高；覆盖默认回退列表）。 */
   baseUrl?: string;
+  /** 显式指定回退主机列表（覆盖默认列表）。 */
+  baseUrls?: readonly string[];
   fetch?: FetchLike;
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
@@ -29,9 +32,16 @@ export function parseKlines(raw: unknown): Candle[] {
 const MAX_PAGE = 1000;
 const MAX_RETRIES = 3;
 
+/** 现货行情主机，按可靠性排序；传输层失败时依次回退。 */
+export const DEFAULT_BASE_URLS: readonly string[] = [
+  "https://api.binance.com",
+  "https://api1.binance.com",
+  "https://data-api.binance.vision",
+];
+
 /** Binance 现货行情源（公共、免 key）。 */
 export class BinanceProvider implements MarketDataProvider {
-  private readonly baseUrl: string;
+  private readonly baseUrls: readonly string[];
   private readonly fetchImpl: FetchLike;
   private readonly sleep: (ms: number) => Promise<void>;
   private readonly now: () => number;
@@ -39,7 +49,8 @@ export class BinanceProvider implements MarketDataProvider {
   private readonly cache = new Map<string, { at: number; candles: Candle[] }>();
 
   constructor(options: BinanceProviderOptions = {}) {
-    this.baseUrl = options.baseUrl ?? "https://data-api.binance.vision";
+    this.baseUrls = options.baseUrls
+      ?? (options.baseUrl !== undefined ? [options.baseUrl] : DEFAULT_BASE_URLS);
     this.fetchImpl = options.fetch
       ?? ((url) => fetch(url) as unknown as Promise<HttpResponseLike>);
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
@@ -62,7 +73,7 @@ export class BinanceProvider implements MarketDataProvider {
     let endTime = options.endTime;
     while (collected.length < limit) {
       const page = Math.min(MAX_PAGE, limit - collected.length);
-      const raw = await this.request(this.url(market, interval, page, endTime));
+      const raw = await this.request(this.path(market, interval, page, endTime));
       const candles = parseKlines(raw);
       if (candles.length === 0) break;
       collected.unshift(...candles);
@@ -79,25 +90,63 @@ export class BinanceProvider implements MarketDataProvider {
     return { symbol: resolveSymbol(symbol) };
   }
 
-  private url(symbol: string, interval: string, limit: number, endTime?: number): string {
+  private path(symbol: string, interval: string, limit: number, endTime?: number): string {
     const params = new URLSearchParams({ symbol, interval, limit: String(limit) });
     if (endTime !== undefined) params.set("endTime", String(endTime));
-    return `${this.baseUrl}/api/v3/klines?${params.toString()}`;
+    return `/api/v3/klines?${params.toString()}`;
   }
 
-  /** 单次请求；对 429/418 按 Retry-After 退避重试。 */
-  private async request(url: string): Promise<unknown> {
+  /**
+   * 依次尝试各主机；传输层失败或 5xx 时回退到下一个主机。
+   * 4xx（如 symbol 非法）与持续限流直接抛出——换主机结果相同。
+   */
+  private async request(pathAndQuery: string): Promise<unknown> {
+    const failures: string[] = [];
+    let lastError: unknown;
+    for (const base of this.baseUrls) {
+      try {
+        return await this.requestHost(base, pathAndQuery);
+      } catch (error) {
+        if (error instanceof BinanceHttpError && error.status < 500) throw error;
+        failures.push(`${base} (${errorMessage(error)})`);
+        lastError = error;
+      }
+    }
+    throw new Error(
+      `binance request failed on ${this.baseUrls.length} host(s): ${failures.join(", ")}`,
+      { cause: lastError },
+    );
+  }
+
+  /** 对单个主机请求；对 429/418 按 Retry-After 退避重试。 */
+  private async requestHost(base: string, pathAndQuery: string): Promise<unknown> {
+    const url = `${base}${pathAndQuery}`;
     for (let attempt = 1; ; attempt += 1) {
       const res = await this.fetchImpl(url);
       if (res.status === 429 || res.status === 418) {
-        if (attempt > MAX_RETRIES) throw new Error(`binance rate limited (${res.status})`);
+        if (attempt > MAX_RETRIES) throw new BinanceHttpError(res.status);
         const retryAfter = Number(res.headers.get("retry-after"));
         const ms = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 1000 * 2 ** (attempt - 1);
         await this.sleep(ms);
         continue;
       }
-      if (res.status < 200 || res.status >= 300) throw new Error(`binance http ${res.status}`);
+      if (res.status < 200 || res.status >= 300) throw new BinanceHttpError(res.status);
       return res.json();
     }
   }
+}
+
+/** 带 HTTP 状态码的错误，用于区分「换主机也没用」的 4xx。 */
+class BinanceHttpError extends Error {
+  readonly status: number;
+
+  constructor(status: number) {
+    super(`binance http ${status}`);
+    this.name = "BinanceHttpError";
+    this.status = status;
+  }
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
