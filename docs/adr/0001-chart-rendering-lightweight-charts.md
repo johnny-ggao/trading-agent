@@ -12,3 +12,7 @@
 ## 状态 (Status)
 
 accepted
+
+## 渲染位置
+
+图表渲染在**回合末尾**（`conversation.chat.turnTail` 槽），而**不是**工具卡（`tool.call.toolview`）。这样它出现在助手最终回答之后、操作行之前，读起来就是"回复的一部分"。宿主工具通过 `presentationMeta` 把 `chartSpec` 交给客户端；客户端在该回合的工具结果节点（`tool-call` 的 `data.root.meta`）里找到它并渲染。助手正文本身只支持文本与图片，无法承载自定义交互组件，所以自定义 UI 只能落在槽位里。

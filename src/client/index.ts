@@ -16,7 +16,10 @@ export const inject = ["slots"];
 
 interface SlotsService {
   inject(name: string, callback: () => unknown): void;
-  register(declaration: { name: string; key: string }, component: unknown): unknown;
+  register(
+    declaration: { name: string; id?: string; key?: string; order?: number },
+    component: unknown,
+  ): unknown;
 }
 
 interface ClientContext {
@@ -29,12 +32,15 @@ const SERIES_DEFS = {
   Histogram: HistogramSeries,
 } as const;
 
-interface ToolCardProps {
-  block?: { meta?: unknown };
-}
+// ── 图表组件 ───────────────────────────────────────────────────────────────
 
 function isChartSpec(value: unknown): value is ChartSpec {
-  return typeof value === "object" && value !== null && Array.isArray((value as ChartSpec).series);
+  return (
+    typeof value === "object"
+    && value !== null
+    && Array.isArray((value as ChartSpec).series)
+    && typeof (value as ChartSpec).symbol === "string"
+  );
 }
 
 function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
@@ -70,21 +76,72 @@ function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
     };
   }, [props.spec]);
 
-  return React.createElement("div", { ref: containerRef, style: { width: "100%", height: "360px" } });
+  return React.createElement("div", {
+    ref: containerRef,
+    style: { width: "100%", height: "360px" },
+  });
 }
 
-/** 工具卡：从 block.meta 取出 chartSpec 并渲染。 */
-function TradingChartCard(props: ToolCardProps): React.ReactElement {
-  const spec = props.block?.meta;
-  if (!isChartSpec(spec)) {
-    return React.createElement("div", null, "图表数据不可用");
+// ── 从本回合的工具结果里取回 chartSpec ──────────────────────────────────────
+
+interface ToolBlockLike {
+  name?: string;
+  call?: { name?: string } | null;
+  meta?: unknown;
+}
+
+interface ChatNodeLike {
+  kind?: string;
+  data?: { root?: ToolBlockLike };
+}
+
+interface ChatSnapshotLike {
+  locations: { getTurn(turn: number): readonly string[] };
+  nodes: { get(key: string): ChatNodeLike | undefined };
+}
+
+type UseChatLike = <T>(selector: (snapshot: ChatSnapshotLike) => T) => T;
+
+interface ChartTailProps {
+  turn?: { turn?: number } | number;
+  useChat?: UseChatLike;
+}
+
+/** 在指定回合里从后往前找 trading_chart 的 tool-result，取它的 presentationMeta。 */
+function findChartSpec(snapshot: ChatSnapshotLike, turn: number | undefined): ChartSpec | undefined {
+  if (turn === undefined) return undefined;
+  const keys = snapshot.locations.getTurn(turn);
+  for (let i = keys.length - 1; i >= 0; i -= 1) {
+    const node = snapshot.nodes.get(keys[i]!);
+    if (node?.kind !== "tool-call") continue;
+    const root = node.data?.root;
+    const name = root?.call?.name ?? root?.name;
+    if (name === TOOL_NAME && isChartSpec(root?.meta)) return root.meta;
   }
-  return React.createElement(TradingChart, { spec });
+  return undefined;
 }
 
-/** 注册 trading_chart 的工具卡视图。 */
+/** 回合末尾的图表贡献：本回合没有 trading_chart 时不渲染。 */
+function TradingChartTail(props: ChartTailProps): React.ReactElement | null {
+  const turn = typeof props.turn === "number" ? props.turn : props.turn?.turn;
+  const useChat = props.useChat;
+  const spec = typeof useChat === "function"
+    ? useChat((snapshot) => findChartSpec(snapshot, turn))
+    : undefined;
+  if (spec === undefined) return null;
+  return React.createElement(
+    "div",
+    { style: { marginTop: "8px" } },
+    React.createElement(TradingChart, { spec }),
+  );
+}
+
+/** 注册回合末尾（turn tail）的图表。 */
 export function apply(ctx: ClientContext): void {
-  ctx.slots.inject("tool.call.toolview", () =>
-    ctx.slots.register({ name: "tool.call.toolview", key: TOOL_NAME }, TradingChartCard),
+  ctx.slots.inject("conversation.chat.turnTail", () =>
+    ctx.slots.register(
+      { name: "conversation.chat.turnTail", id: "trading-chart", order: 0 },
+      TradingChartTail,
+    ),
   );
 }
