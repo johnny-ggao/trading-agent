@@ -39,7 +39,89 @@ const SERIES_DEFS = {
   Histogram: HistogramSeries,
 } as const;
 
-// ── 图表组件 ───────────────────────────────────────────────────────────────
+// ── 图例 ───────────────────────────────────────────────────────────────────
+
+interface LegendRow {
+  label: string;
+  color?: string;
+  value?: number;
+}
+
+interface LegendPane {
+  title: string;
+  rows: LegendRow[];
+}
+
+function readValue(item: unknown): number | undefined {
+  if (typeof item !== "object" || item === null) return undefined;
+  const record = item as { value?: unknown; close?: unknown };
+  if (typeof record.value === "number") return record.value;
+  if (typeof record.close === "number") return record.close;
+  return undefined;
+}
+
+function formatValue(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1000) return value.toFixed(1);
+  if (abs >= 1) return value.toFixed(2);
+  return value.toPrecision(4);
+}
+
+/** 按窗格汇总各序列的名称与最后一个值。 */
+function buildLegend(spec: ChartSpec): LegendPane[] {
+  return spec.panes
+    .map((pane) => ({
+      title: pane.title ?? pane.id,
+      rows: spec.series
+        .filter((series) => series.pane === pane.id && series.type !== "candlestick")
+        .map((series) => ({
+          label: series.label ?? series.id,
+          color: typeof series.options?.color === "string" ? series.options.color : undefined,
+          value: readValue(series.data.at(-1)),
+        })),
+    }))
+    .filter((pane) => pane.rows.length > 0);
+}
+
+function LegendOverlay(props: { legend: LegendPane[] }): React.ReactElement | null {
+  if (props.legend.length === 0) return null;
+  return React.createElement(
+    "div",
+    {
+      "data-trading-legend": "1",
+      style: {
+        position: "absolute",
+        top: "6px",
+        left: "10px",
+        pointerEvents: "none",
+        display: "flex",
+        flexDirection: "column",
+        gap: "2px",
+        font: "11px/1.4 ui-sans-serif, system-ui, sans-serif",
+        opacity: 0.95,
+      },
+    },
+    props.legend.map((pane) =>
+      React.createElement("div", { key: pane.title, style: { display: "flex", gap: "10px" } }, [
+        ...(pane.rows.length > 1
+          ? [React.createElement("span", { key: "__title", style: { opacity: 0.55 } }, pane.title)]
+          : []),
+        ...pane.rows.map((row) =>
+          React.createElement("span", { key: row.label }, [
+            React.createElement("span", { key: "label", style: { color: row.color } }, row.label),
+            React.createElement(
+              "span",
+              { key: "value", style: { opacity: 0.85 } },
+              row.value === undefined ? "" : ` ${formatValue(row.value)}`,
+            ),
+          ]),
+        ),
+      ]),
+    ),
+  );
+}
+
+// ── 图表 ───────────────────────────────────────────────────────────────────
 
 function isChartSpec(value: unknown): value is ChartSpec {
   return (
@@ -53,6 +135,7 @@ function isChartSpec(value: unknown): value is ChartSpec {
 function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
+  const legend = React.useMemo(() => buildLegend(props.spec), [props.spec]);
   // 窗格越多整体越高，主图通过 stretchFactor 占更大比例。
   const paneCount = Math.max(1, props.spec.panes.length);
   const height = paneCount <= 1 ? 360 : 300 + paneCount * 80;
@@ -95,7 +178,6 @@ function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
         api.setData(series.data as never);
       }
     });
-
     chart.panes().forEach((pane, index) => pane.setStretchFactor(index === 0 ? 2 : 1));
 
     return () => {
@@ -104,11 +186,16 @@ function TradingChart(props: { spec: ChartSpec }): React.ReactElement {
     };
   }, [props.spec, height]);
 
-  return React.createElement("div", {
-    ref: containerRef,
-    "data-trading-chart": "1",
-    style: { width: "100%", height: `${height}px` },
-  });
+  return React.createElement(
+    "div",
+    { style: { position: "relative", width: "100%" } },
+    React.createElement("div", {
+      ref: containerRef,
+      "data-trading-chart": "1",
+      style: { width: "100%", height: `${height}px` },
+    }),
+    React.createElement(LegendOverlay, { legend }),
+  );
 }
 
 // ── 从本回合的工具结果里取回 chartSpec ──────────────────────────────────────

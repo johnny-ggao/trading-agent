@@ -51,6 +51,7 @@ export function computeIndicators(candles: Candle[], config: IndicatorConfig = D
       type: "histogram",
       pane: "volume",
       data,
+      label: "VOL",
       options: { color: VOLUME_COLOR, priceFormat: { type: "volume" } },
     });
   }
@@ -62,6 +63,7 @@ export function computeIndicators(candles: Candle[], config: IndicatorConfig = D
       type: "line",
       pane: "price",
       data: toLinePoints(candles, sma.updates(closes)),
+      label: `MA${period}`,
       options: { color: MA_COLORS[period] ?? "#9aa0aa", lineWidth: 1 },
     });
   }
@@ -79,9 +81,9 @@ export function computeIndicators(candles: Candle[], config: IndicatorConfig = D
     signalLine.push({ time, value: result.signal });
     histogram.push({ time, value: result.histogram, color: result.histogram >= 0 ? UP_COLOR : DOWN_COLOR });
   }
-  series.push({ id: "macd", type: "line", pane: "macd", data: macdLine, options: { color: MACD_COLOR, lineWidth: 1 } });
-  series.push({ id: "macdSignal", type: "line", pane: "macd", data: signalLine, options: { color: SIGNAL_COLOR, lineWidth: 1 } });
-  series.push({ id: "macdHist", type: "histogram", pane: "macd", data: histogram });
+  series.push({ id: "macd", type: "line", pane: "macd", data: macdLine, label: "DIF", options: { color: MACD_COLOR, lineWidth: 1 } });
+  series.push({ id: "macdSignal", type: "line", pane: "macd", data: signalLine, label: "DEA", options: { color: SIGNAL_COLOR, lineWidth: 1 } });
+  series.push({ id: "macdHist", type: "histogram", pane: "macd", data: histogram, label: "Hist" });
 
   const rsi = new RSI(config.rsi);
   series.push({
@@ -89,6 +91,7 @@ export function computeIndicators(candles: Candle[], config: IndicatorConfig = D
     type: "line",
     pane: "rsi",
     data: toLinePoints(candles, rsi.updates(closes)),
+    label: `RSI(${config.rsi})`,
     options: { color: RSI_COLOR, lineWidth: 1 },
   });
 

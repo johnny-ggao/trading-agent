@@ -22,6 +22,8 @@ export interface SeriesSpec {
   pane: string;
   data: Array<Candle | LinePoint>;
   options?: Record<string, unknown>;
+  /** 图例显示名（如 MA20 / DIF / RSI(14)）。 */
+  label?: string;
 }
 
 export interface PaneSpec {
