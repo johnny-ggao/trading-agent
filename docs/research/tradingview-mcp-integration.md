@@ -231,8 +231,7 @@ server，它反向代理到远程 Streamable HTTP + OAuth 的 TradingView 端点
   `device_authorization_endpoint`，所以这条退路对它不可用**（§1.2）。
 - **现代协议时代：** `--protocol auto` 让 mcp-remote 成为 dual-era client，跨接
   `2026-07-28` 与 `2025-11-25`（DSH 的 client 讲 2026-07-28 并支持回落）。
-- **工具过滤：** `--ignore-tool` 可把远端工具裁剪成白名单（例如只留 `get_ohlcv`），
-  这正好能实现"最小暴露"的边界。
+- **工具过滤：** `--ignore-tool <pattern>` 是**黑名单**——从 `tools/list` 与 `tools/call` 中排除匹配的工具，支持 `*` 通配；**没有白名单开关**（本条修正了本文档早期把它写成"白名单"的错误）。要"最小暴露"只能逐个排除写类工具（`create_*`/`delete_*`/`update_*`/`add_*`/`remove_*`/`stop_*`/`restart_*`）。
 - **代理/网络：** `--enable-proxy`（读 `HTTP_PROXY`/`HTTPS_PROXY`/`NO_PROXY`）、`--ipv4`、
   `--connect-timeout`/`--headers-timeout`/`--body-timeout`、`--keep-alive`。
 
@@ -247,7 +246,11 @@ server，它反向代理到远程 Streamable HTTP + OAuth 的 TradingView 端点
         transport: stdio
         command: npx
         args: ['-y', 'mcp-remote@0.14.3', 'https://mcp.tradingview.com/mcp',
-               '--transport', 'http-only', '--ignore-tool', 'get_ohlcv']
+               '--transport', 'http-only', '--protocol', 'auto',
+               '--ignore-tool', 'create_*', '--ignore-tool', 'delete_*',
+               '--ignore-tool', 'update_*', '--ignore-tool', 'add_*',
+               '--ignore-tool', 'remove_*', '--ignore-tool', 'stop_*',
+               '--ignore-tool', 'restart_*']
 ```
 
 首次启动时 `mcp-remote` 会打开浏览器完成 OAuth（需要用户本人已登录的 **Essential 及以上、
@@ -428,7 +431,7 @@ reconnect 生命周期。相对本仓库的规模，这是不合理的。
 **Step 1 —— 用作一个用户级 DSH MCP server**
 - 在 `$DSH_HOME/cordis.patch.yml`（或 `--patch` 覆盖层）里加 §3.1 的那条 `mcp-github` 式
   配置行，`serverName: tradingview`，`--transport http-only`，并按需要
-  `--ignore-tool` 收窄工具面。
+  并用 `--ignore-tool` 逐个排除写类工具。
 - **不要**把这条写进本仓库的 `cordis.patch.yml`，也**不要**让插件代码依赖它。
 - 成功判据：DSH 启动后出现 `mcp__tradingview__get_ohlcv` 等工具，调用返回 OHLCV 数组。
 

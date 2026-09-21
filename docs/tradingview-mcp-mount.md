@@ -28,10 +28,14 @@ npx -p mcp-remote@latest mcp-remote-client https://mcp.tradingview.com/mcp --tra
         transport: stdio
         command: npx
         args: ['-y', 'mcp-remote@0.14.3', 'https://mcp.tradingview.com/mcp',
-               '--transport', 'http-only', '--ignore-tool', 'get_ohlcv']
+               '--transport', 'http-only', '--protocol', 'auto',
+               '--ignore-tool', 'create_*', '--ignore-tool', 'delete_*',
+               '--ignore-tool', 'update_*', '--ignore-tool', 'add_*',
+               '--ignore-tool', 'remove_*', '--ignore-tool', 'stop_*',
+               '--ignore-tool', 'restart_*']
 ```
 
-`--ignore-tool` 把远端工具收窄成白名单（上面只留 `get_ohlcv`）；需要别的工具就继续追加。启动后模型应能看到 `mcp__tradingview__get_ohlcv`。
+`--ignore-tool` 是**黑名单**（排除匹配工具，支持 `*`），**不是白名单**。上面的写法排除了所有写类工具（创建/删除/更新/增删 watchlist 与 alert），只留下读类工具；要更严就继续追加排除项。启动后模型应能看到 `mcp__tradingview__get_ohlcv` 等读类工具。
 
 **注意：** DSH 的 stdio 连接会先起一个探针子进程再起服务进程。授权完成前探针可能失败；先按 Step 0 把 token 拿到手再挂更稳。
 
