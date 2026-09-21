@@ -16,6 +16,12 @@ dsh plugin --profile web add dsh-trading-agent
 dsh plugin --profile web add /Users/johnny/Work/trading-agent
 ```
 
+## 随包 skill
+
+插件附带一个模型可调用的 skill `trading-chart`，由宿主半边在启动时注册。它教模型何时调用 `trading_chart`、时间词如何映射主周期、指标参数怎么填、默认值是什么，以及如何在回答里声明所用默认。
+
+正文在 [assets/trading-chart.md](assets/trading-chart.md)；构建时由 esbuild 的 `.md` text loader 内联进 `lib/index.js`，所以改完正文要**重新构建并重启 `dsh web`**。
+
 ## 开发
 
 ```sh

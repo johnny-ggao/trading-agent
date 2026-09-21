@@ -12,6 +12,7 @@ await build({
   platform: "node",
   target: "es2024",
   external: ["@deepseek-ai/*"],
+  loader: { ".md": "text" },
   sourcemap: false,
   logLevel: "info",
 });

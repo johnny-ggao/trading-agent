@@ -4,6 +4,7 @@ import { BinanceProvider } from "./market/binance";
 import { resolveSymbol } from "./market/symbol";
 import { barsForInterval, buildChartSpec } from "./market/chart";
 import { describeIndicators, resolveChartRequest } from "./market/intent";
+import { registerTradingChartSkill, type TradingChartSkill } from "./skill/tradingChart";
 
 /** 与 @deepseek-ai/dsh-util-values 的 JsonValue 结构等价，避免额外依赖。 */
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
@@ -11,17 +12,19 @@ type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 /** Cordis 插件名。 */
 export const name = "trading-agent";
 
-/** 所需服务：工具注册表。 */
-export const inject = ["tools"];
+/** 所需服务：工具注册表与 skill 注册表。 */
+export const inject = ["tools", "skills"];
 
 interface HostContext {
   tools: { register(tool: ReturnType<typeof defineTool>): unknown };
+  skills: { register(skill: TradingChartSkill): unknown };
 }
 
 const provider = new BinanceProvider();
 
-/** 注册 trading_chart 工具（数据来自 Binance 现货；支持时间词与指标覆盖）。 */
+/** 注册随包 skill 与 trading_chart 工具（数据来自 Binance 现货；支持时间词与指标覆盖）。 */
 export function apply(ctx: HostContext): void {
+  registerTradingChartSkill(ctx.skills);
   ctx.tools.register(
     defineTool({
       name: TOOL_NAME,
