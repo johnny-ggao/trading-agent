@@ -6,3 +6,5 @@ lib/
 .reload.log
 .scratch/debug/
 prototype/**/bundle.js
+.npm-cache/
+.npm-logs/
