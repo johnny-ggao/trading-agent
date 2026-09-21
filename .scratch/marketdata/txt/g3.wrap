@@ -1,0 +1,99 @@
+ Delisted Stock Companies Data | EODHD APIs Documentation MCP Server For Financial Data by EODHD Learn more API Docs Popular APIs EOD Historical Data API Fundamental Data API 
+Live OHLCV Prices API Real-time Prices API Intraday Prices API Financial News API EOD Options Data API Splits and Dividends Data API Technical Indicators API Commodities API 
+45+ APIs covering stocks, forex, options, indices. Browse all APIs → Tools Tools & integrations Coding Libraries Python · R · Node.js · PHP · Java Claude Plugin New EODHD 
+skills for Claude Code EODHD ChatGPT Assistant Conversational data lookup Google Sheets Add-on Data in Google Sheets without formulas Excel Add-on Data in Excel without 
+formulas EOD Data Downloader FTP alternative (Win) Forex Tools & Converter Live FX rates & converter Got an idea for a tool? Contact support → MCP New API Marketplace For 
+Business Solutions Investment Platform White-label widget for wealth apps IR Stock Widget Live ticker on investor pages Business Solutions Custom B2B integrations For 
+Specific Audiences Universities & Academic Research licensing ASX Data Australian market specialists Custom volumes, dedicated support, SLAs. Talk to Sales → Community Learn 
+& connect Academy 164 articles · learn financial data Github 14 repos · SDKs & open-source tools Reddit Join the community discussion Medium Tutorials, guides & updates 
+Follow us Pricing Choose your plan Personal Plans Personal use Commercial / B2B Plans Startups · Teams · Business More Sign up Search Full Documentation 1. Market Data APIs 
+Delisted Stock Companies Data Bulk for Live OHLCV Stock Prices API (US Exchanges Only) Live v2 for US Stocks: Extended Quotes (2025) End-Of-Day Historical Stock Market Data 
+API Tick Data API: US Stock Market Real-Time Data API via Websockets Intraday Historical Stock Price Data API Live OHLCV Stock Prices API: US & Global Stocks, Currencies 
+Corporate Actions: Splits and Dividends API Stock Market Screener API Technical Analysis Indicators API 2. Fundamental & Economic Data SEC Filings API (10-K, 10-Q, 8-K) 
+(beta) Credit and Sovereign Risk Data API Interest Rates & Funding-Stress Spreads API: SOFR, Fed Funds, ECB, BoE Insider Transactions API (SEC "Form 4") ASX (Australia) 
+Corporate Actions API (beta) Bulk Fundamentals API (via Extended Fundamentals Plan) Fundamental Data: Stocks, ETFs, Mutual Funds, Indices Fundamental Data: Cryptocurrencies 
+S&P and Dow Jones: Indices Historical Constituents Data API ESG Data API 40 000 Stock Market Logos API Historical Market Capitalization (Marketcap) API: US Stocks & Digital 
+Currencies Calendar API: Upcoming Dividends, Earnings, Trends, IPOs and Splits 3. Exchange & Instruments Info ID Mapping API: CUSIP / ISIN / FIGI / LEI / CIK ↔ Symbol List of 
+Supported Tickers: API for All Asset Classes List of Supported Crypto Currencies List of Supported FOREX Currencies Exchanges API: Get List of Supported Exchanges Stock 
+Market Trading Hours and Holidays API Search API for Stocks, ETFs, Mutual Funds, and Indices Bulk API for EOD, Splits and Dividends 4. Alternative & Derived Data Real Estate 
+Data API (beta) Congressional Trades API (beta) Sanctions API: OFAC Screening Data (Entities, Vessels) (Beta) ASX (Australia) Corporate Actions API (beta) Commodities API: 
+Historical Prices for Oil, Gas, Metals & Agriculture (beta) US Treasury (UST) Interest Rates API (beta) CBOE Europe Indices API (beta) US Stock Options Chains with Greeks 
+(EOD) Economic Events Data API Financial News Feed and Stock News Sentiment data API Macroeconomic Indicators API: GDP, Inflation & Demographics by Country Macroeconomic Data 
+API: Bonds, Rates & FX Reference 5. Developer Tools & Examples EODHD Claude Skills: Teach Your AI Assistant the Entire Financial API Node.js/TypeScript SDK for EODHD 
+Financial APIs EODHDSignals: Telegram Bot User Guide MCP Server For Financial Data by EODHD R Library v.2 for Financial Data (2024) R Library for Financial Data Power Bi 
+Connector for Financial Data APIs Postman Financial Data API Collection NinjaTrader Adapter for EOD Intraday and Fundamental Data Python Financial Library: Installation, 
+Functions, Examples XLQ2 Integration Matlab API Connector and Example CURL & WGET Stock API Examples C# .NET Financial API Stock Wrapper F Sharp (F#) Stock API Example 
+PHP/Laravel Example Java Stock API Example 6. No-Code Tools EODHD Claude Skills: Teach Your AI Assistant the Entire Financial API EODHD Chat GPT Assistant (Code generation) 
+Spreadsheets for Stocks, ETFs, Mutual Funds, Forex pairs and more Google Sheets Finance Data Add-on Financial Excel Add-on For Historical, EOD, Intraday & Fundamental data. 
+Video tutorial WordPress Financial Stock Market Data Plugin Real-Time Stocks Prices Data Bar and Crypto Currency Converter Chrome Extension Windows and Linux Downloaders for 
+End Of Day Data 7. Other Articles [REVIEW] Delisted Stock Companies Data SEC Company Analytics API Real-Time WebSocket — Cboe US & EU Equities (Testing Guide) US Stock Symbol 
+Rename History API User API API Limits: Daily Calls, Rate Limits and Costs QUICK START with our Financial Data APIs Our Data Sources and Data Partners Commercial vs Personal 
+license use Cookie Policy Privacy Policy Terms and Conditions Related APIs Bulk for Live OHLCV Stock Prices API (US Exchanges Only) Live v2 for US Stocks: Extended Quotes 
+(2025) End-Of-Day Historical Stock Market Data API Tick Data API: US Stock Market Real-Time Data API via Websockets Intraday Historical Stock Price Data API All docs Search 
+Page info Delisted Stock Companies Data OpenAPI (Redoc) version Via MCP server Via Coding Libraries & SDK In plans, API calls & resources in Page info When a company is 
+acquired, goes bankrupt, or otherwise leaves an exchange, its ticker is delisted, but its historical data does not disappear from EODHD. You can still list delisted symbols 
+and pull their end-of-day prices, fundamentals, dividends, and splits. This is essential for survivorship-bias-free backtesting and long-horizon research. Getting delisted 
+data is a two-step workflow: first find the delisted ticker in the exchange symbol list, then query the regular data endpoints with that ticker. Scope at a glance. Delisted 
+symbols are retrieved per exchange with the delisted=1 flag; the US list alone returns tens of thousands of symbols across stocks, ETFs, and funds. Once you have a delisted 
+ticker, the standard EOD, Fundamentals, Dividends, and Splits endpoints work exactly as they do for active tickers. Symbol Change History helps when a ticker was renamed 
+rather than delisted (US only). Data Availability Which data types are available depends on when the company was delisted: Delisted Available data After 2018 EOD, 
+Fundamentals, Dividends and Splits After 2021 All of the above, plus Intraday Before 2018 EOD only If you need to confirm coverage for a specific ticker, contact our support 
+team. Step 1 — Find Delisted Tickers Use the Exchange Symbol List endpoint with delisted=1. This returns only the delisted (inactive) symbols for the exchange, not the active 
+ones. The exchange code is part of the path, for example US for the combined US exchanges. GET https://eodhd.com/api/exchange-symbol-list/US?delisted=1 Parameters api_token 
+string required Your EODHD API token delisted enum optional Set to 1 to return only delisted (inactive) symbols. Allowed values: 0, 1 (Default: 0) type enum optional Filter 
+by instrument type. Allowed values: common_stock, preferred_stock, stock, etf, fund fmt enum optional Response format. Allowed values: json, csv (Default: json) Request 
+Example URL cURL PHP Python R Chat GPT https://eodhd.com/api/exchange-symbol-list/US? delisted = 1 & type = common_stock & api_token = your_api_token & fmt = json ( Sign up 
+for free to get an API token) curl --location "https://eodhd.com/api/exchange-symbol-list/US? delisted = 1 & type = common_stock & api_token = your_api_token & fmt = json " ( 
+Sign up for free to get an API token) $curl = curl_init(); curl_setopt_array($curl, array( CURLOPT_URL => 'https://eodhd.com/api/exchange-symbol-list/US? delisted = 1 & type 
+= common_stock & api_token = your_api_token & fmt = json ', CURLOPT_RETURNTRANSFER => true, CURLOPT_ENCODING => '', CURLOPT_MAXREDIRS => 10, CURLOPT_TIMEOUT => 0, 
+CURLOPT_FOLLOWLOCATION => true, CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1, CURLOPT_CUSTOMREQUEST => 'GET', )); $data = curl_exec($curl); curl_close($curl); try { $data = 
+json_decode($data, true, 512, JSON_THROW_ON_ERROR); var_dump($data); } catch (Exception $e) { echo 'Error. '.$e->getMessage(); } ( Sign up for free to get an API token) 
+import requests url = f'https://eodhd.com/api/exchange-symbol-list/US? delisted = 1 & type = common_stock & api_token = your_api_token & fmt = json ' data = 
+requests.get(url).json() print(data) ( Sign up for free to get an API token) library(httr) library(jsonlite) url <- 'https://eodhd.com/api/exchange-symbol-list/US? delisted = 
+1 & type = common_stock & api_token = your_api_token & fmt = json ' response <- GET(url) if (http_type(response) == "application/json") { content <- content(response, "text", 
+encoding = "UTF-8") cat(content) } else { cat("Error while receiving data\n") } ( Sign up for free to get an API token) New to coding? Our ChatGPT assistant can generate code 
+in any language tailored to our API. Simply describe how you want to use our data, and get a working piece of code. Don’t forget to replace the API token with your own. Try 
+it now (it's free)! How to use it (YouTube) Response Example [ { "Code": "AAAB", "Name": "Admiralty Bancorp Inc", "Country": "USA", "Exchange": "NASDAQ", "Currency": "USD", 
+"Type": "Common Stock", "Isin": null }, { "Code": "ATVI", "Name": "Activision Blizzard Inc", "Country": "USA", "Exchange": "NASDAQ", "Currency": "USD", "Type": "Common 
+Stock", "Isin": "US00507V1098" } ] Response Fields Field Type Description Code string Ticker symbol code Name string Company name associated with the ticker Country string 
+Country of the exchange Exchange string Exchange the ticker was listed on Currency string Trading currency Type string Instrument type, for example Common Stock, ETF, or FUND 
+Isin string or null ISIN code, if available Sign up & Get Data Step 2 — Get the Data for a Delisted Ticker Once you have the code, query it with the regular data endpoints. 
+Delisted tickers keep their full history up to the delisting date. The most common endpoints are: Data Endpoint End-of-day prices /api/eod/{TICKER} Fundamentals 
+/api/fundamentals/{TICKER} Dividends /api/div/{TICKER} Splits /api/splits/{TICKER} Intraday /api/intraday/{TICKER} Request Example End-of-day prices for the delisted ticker 
+ATVI.US (Activision Blizzard, delisted in October 2023 after its acquisition): URL cURL PHP Python R Chat GPT https://eodhd.com/api/eod/ ATVI.US ? api_token = your_api_token 
+& fmt = json ( Sign up for free to get an API token) curl --location "https://eodhd.com/api/eod/ ATVI.US ? api_token = your_api_token & fmt = json " ( Sign up for free to get 
+an API token) $curl = curl_init(); curl_setopt_array($curl, array( CURLOPT_URL => 'https://eodhd.com/api/eod/ ATVI.US ? api_token = your_api_token & fmt = json ', 
+CURLOPT_RETURNTRANSFER => true, CURLOPT_ENCODING => '', CURLOPT_MAXREDIRS => 10, CURLOPT_TIMEOUT => 0, CURLOPT_FOLLOWLOCATION => true, CURLOPT_HTTP_VERSION => 
+CURL_HTTP_VERSION_1_1, CURLOPT_CUSTOMREQUEST => 'GET', )); $data = curl_exec($curl); curl_close($curl); try { $data = json_decode($data, true, 512, JSON_THROW_ON_ERROR); 
+var_dump($data); } catch (Exception $e) { echo 'Error. '.$e->getMessage(); } ( Sign up for free to get an API token) import requests url = f'https://eodhd.com/api/eod/ 
+ATVI.US ? api_token = your_api_token & fmt = json ' data = requests.get(url).json() print(data) ( Sign up for free to get an API token) library(httr) library(jsonlite) url <- 
+'https://eodhd.com/api/eod/ ATVI.US ? api_token = your_api_token & fmt = json ' response <- GET(url) if (http_type(response) == "application/json") { content <- 
+content(response, "text", encoding = "UTF-8") cat(content) } else { cat("Error while receiving data\n") } ( Sign up for free to get an API token) New to coding? Our ChatGPT 
+assistant can generate code in any language tailored to our API. Simply describe how you want to use our data, and get a working piece of code. Don’t forget to replace the 
+API token with your own. Try it now (it's free)! How to use it (YouTube) Response Example [ { "date": "2023-10-13", "open": 94.42, "high": 94.42, "low": 94.42, "close": 
+94.42, "adjusted_close": 94.42, "volume": 0 } ] In Fundamentals, the General.IsDelisted field is true for a delisted company, and General.UpdatedAt reflects the last update 
+around the delisting date. Use this to confirm a ticker is delisted rather than simply inactive today. Renamed vs Delisted — Symbol Change History A ticker you cannot find 
+may have been renamed rather than delisted. For example, a company can change its symbol after a merger or rebranding while its data continues under the new code. The Symbol 
+Change History endpoint maps old symbols to new ones over a date range. Only US exchanges are currently supported. GET 
+https://eodhd.com/api/symbol-change-history?from=2024-01-01&to=2024-03-31&ex=US Parameters api_token string required Your EODHD API token from date required Start date in 
+YYYY-MM-DD format, inclusive to date required End date in YYYY-MM-DD format, inclusive ex string optional Exchange filter, for example US. Only US exchanges are currently 
+supported fmt enum optional Response format. Allowed values: json, csv (Default: json) Response Example [ { "exchange": "US", "old_symbol": "BYN", "new_symbol": "PNST", 
+"company_name": "Pinstripes Holdings, Inc. Class A Common Stock", "effective": "2024-01-02" } ] Response Fields Field Type Description exchange string Exchange code 
+old_symbol string Previous ticker symbol new_symbol string New ticker symbol company_name string Company name effective string Date the change took effect, YYYY-MM-DD Why 
+Delisted Data Matters Datasets that contain only currently active companies suffer from survivorship bias: failed, acquired, and delisted names are missing, which inflates 
+historical returns and distorts backtests. Including delisted tickers gives a complete, point-in-time universe and more realistic results. Compare plans and find your fit 
+Free and paid plans for individual and commercial use Go to Pricing Next Bulk for Live OHLCV Stock Prices API (US Exchanges Only) About the API Additional Resources Claude 
+Plugin Excel add-on Google Sheets add-on Summarize Article with AI: On this page Data Availability Step 1 — Find Delisted Tickers Step 2 — Get the Data for a Delisted Ticker 
+Renamed vs Delisted — Symbol Change History Why Delisted Data Matters Unicorn Data Services 835 149 998 R.C.S. LYON Greffe du tribunal de Commerce de LYON Address: LE FORUM, 
+27 rue Maurice Flandin, 69003 Lyon, France. Support team: support@eodhistoricaldata.com Sales team: sales@eodhistoricaldata.com Support chat Reddit Blog Follow us EODHD.COM 
+would like to remind you that our service DOES NOT provide any financial services. EODHD.COM provides only data APIs, all data contained in this website and via API is not 
+necessarily real-time nor accurate. All CFDs (stocks, indices, mutual funds, ETFs), and Forex are not provided by exchanges but rather by market makers, and so prices may not 
+be accurate and may differ from the actual market price, meaning prices are indicative and not appropriate for trading purposes. We are not using exchanges data feeds for the 
+pricing data, we are using OTC, peer to peer trades and trading platforms over 100+ sources, we are aggregating our data feeds via VWAP method. Therefore EOD Historical Data 
+doesn't bear any responsibility for any trading losses you might incur as a result of using this data. EOD Historical Data or anyone involved with EOD Historical Data will 
+not accept any liability for loss or damage as a result of reliance on the information including data, quotes, charts and buy/sell signals contained within this website. 
+Please be fully informed regarding the risks and costs associated with trading the financial markets, it is one of the riskiest investment forms possible. EOD Historical Data 
+does not give any warranties (including, without limitation, as to merchantability or fitness for a particular purpose or use). Without limitation to this clause, EOD 
+Historical Data does not warrant that access to the Website will not expose the User to viruses or other harmful items and no assurance can be given that the Website or any 
+linked website will not harm or cause loss to the User, or the User's computer or network. About us Affiliate Program Privacy Policy Terms & Conditions © Unicorn Data 
+Services, 2017-2026 

@@ -1,0 +1,5 @@
+# dsh-trading-agent 的 bundle patch：把宿主半边作为一行挂进 Loader。
+- insert:
+    - id: trading-agent
+      name: dsh-trading-agent
+      config: {}

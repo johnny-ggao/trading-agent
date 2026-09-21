@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+ <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+  <meta http-equiv="refresh" content="9;url=http://developer.oanda.com/">
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+    <title>Page Not Found</title>
+    
+    <link rel="stylesheet" href="/css/site.css" />
+    <link rel="icon" href="/images/favicon.ico" type="image/ico" sizes="16x16">
+    <script type="text/javascript">
+    if(location.hostname !== "developer.oanda.com") {
+    	var script = document.createElement("script");
+    	script.type = "text/javascript";
+    	script.src = "//localhost:35729/livereload.js";
+    	document.getElementsByTagName("head")[0].appendChild(script);
+    
+    }
+    </script> 
+    
+    <script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+    <script src="/js/libs/bootstrap.js"></script>
+    <script src="/js/main.min.js"></script>
+    
+    <meta name="google-translate-customization" content="613de8f134fa1dd4-d28c93d267de3976-g4696095b5a32dcda-13"></meta>
+    
+    <script type="text/javascript" src="//js.maxmind.com/js/apis/geoip2/v2.1/geoip2.js"></script>
+    <script type="text/javascript">
+    var onSuccess = function(location){
+    
+                var countries = ["BE","BF","BG","BA","WF", "BL","BH","BJ","BV","WS",  "BQ","JE","BY", "RU", "RW" ,"TL", "RE" ,"TM", "TJ" ,"RO","GW", "GS", "GR" ,"GQ", "GG", "GF","GE", "GD" ,"GB", "GA", "GN" ,"GM", "GL", "GI", "OM", "IL","JO", "HR", "HU" ,"PW", "PT", "SJ", "PN", "PL","PM", "ZM", "EH", "EE", "EG","ZA" ,"IT", "SA" ,"ES" ,"ER", "ME", "MD" ,"MG", "MA" ,"MC", "UZ", "ML" , "MH" ,"MK", "MU", "MT", "MW" ,"MQ" ,"MS" ,"MR", "IM", "UG","AT" ,"FR", "IO", "SH", "FI","FK","FM", "FO",  "NL", "NO", "NA", "NC", "NE" ,"NR", "NU", "XK", "CI","CH", "CM","LB","CZ", "CY", "CV","SZ","KG" ,"KE", "SR" ,"KI","KM", "ST" ,"SK", "SI", "KW", "SN","SM" ,"SC" ,"KZ", "SE", "DJ", "DK" ,"DE" ,"DZ", "YT" ,"TZ", "LA" ,"LI", "LV","LT","LU", "LR", "LS",  "TF","TG", "VA", "VC", "AE", "AD",  "AI", "IS",  "AM", "AL", "AO", "AQ" , "AX", "AZ","IE", "UA","QA", "MZ"];
+    	 var loc = location.country.iso_code;
+               if(countries.indexOf(loc) > -1)
+                {
+                  $('.oeldisclaimer').show();
+                }
+    };
+    var onError = function(error){
+     console.log('error ',e)
+    };
+    geoip2.country(onSuccess, onError);
+    </script>
+    
+    <style>
+    .header {margin: 0 auto;padding: 5px 5px;}
+    .sticky {position: fixed; top: 0; left: 0; width: 100%; margin: 0; padding: 5px; background-color: #F2F2F2;; color: black; z-index: 900; font:14px;font-family:"helvetica neue,Helvetica,Arial,sans-serif";}</style>
+    
+          <div class="oeldisclaimer" id="myHeader" hidden="true">
+            <div style="background-color:#F2F2F2;font:8px;font-family:helvetica neue,Helvetica,Arial,sans-serif;">
+              <span style="display: block; text-align: center;"><span class="white-links"> CFDs are complex instruments and come with a high risk of losing money rapidly due to leverage.
+                <br> <strong> 76.6% of retail investor accounts lose money when trading CFDs with this provider.</strong> 
+              <br> You should consider whether you understand how CFDs work and whether you can afford to take the high risk of losing your money.</span></span></div></div>
+    <script>
+    window.onscroll = function() {myFunction()};
+    
+    var header = document.getElementById("myHeader");
+    var sticky = header.offsetTop;
+    function myFunction() { if (window.pageYOffset > sticky) {header.classList.add("sticky"); } else {header.classList.remove("sticky");}}
+    </script>
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</head>
+<body id="content">
+    <div id="wrap">
+        <div id="main">
+            <nav id="navigation" class="navbar navbar-default" role="navigation">
+                <div class="container">
+                    <!-- Brand and toggle get grouped for better mobile display -->
+                    <div style="margin-top:4px;background-color:white;width:100%;float:right;" id="google_translate_element"></div>
+                    
+                    <div class="navbar-header">
+            
+                        <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#bs-example-navbar-collapse-1">
+                            <span class="sr-only">Toggle navigation</span>
+                            <span class="icon-bar"></span>
+                            <span class="icon-bar"></span>
+                        </button>
+                        <a class="navbar-brand" href="/"><img src="/images/logo.png"></a>
+                    </div>
+            
+                    <!-- Collect the nav links, forms, and other content for toggling -->
+                    <div class="collapse navbar-collapse" id="bs-example-navbar-collapse-1">
+            
+                        <form id="cse-search" action="http://google.com/cse">
+                            <div class="navbar-form navbar-right search-box" >
+                                <input type="hidden" name="cx" value="012645304776227016943:krqdhx97yts" />
+                                <input type="hidden" name="ie" value="UTF-8" />
+                                <i class="icon-search i-search"></i>
+                                <i class="icon-cancel i-close"></i>
+                                <input type="text" name="q" class="form-control" placeholder="Search" data-toggle="modal" data-target="#search-modal">
+                            </div>
+                        </form>
+            
+                        <ul class="nav navbar-nav navbar-right">
+                            <li class=""><a href="/rest-live-v20/introduction/" class="uc">REST-V20</a></li> 
+                            <li class=""><a href="/fix-live/introduction/" class="uc">fix</a></li>
+                            <li class=""><a href="/mt4-live/introduction/" class="uc">mt4</a></li>
+                        </ul>
+            
+                    </div><!-- /.navbar-collapse -->
+                  </div><!-- /.container-fluid -->
+            </nav>
+            <div class="container box-small">
+                <div class="row">
+                    <div class="col-xs-12">
+                        <h1>404</h1>
+                        <p>
+                              Hello, it looks like you were sent to a page that does not exist (anymore).<br/><br/>
+  Please update your bookmarks as we've recently refreshed our <a href='https://developer.oanda.com'>Developer Portal</a>.<br/><br/>
+  We're redirecting you to the new version of this page now, if that doesn't work then follow this <a href='http://developer.oanda.com'>link to our new portal
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>    
+    </div>
+    <div id="footer">
+    
+            <div id="footer-links" class="container">
+                <div class="row">
+                    <div class="left-links col-xs-12 col-md-8">
+                        <span class="copyright" >Copyright OANDA 2014</span>
+                        <a href="http://www.oanda.com/site/terms-of-use" class="main-link">TERMS OF USE</a>
+                        <a href="http://www.oanda.com/site/privacy/" class="main-link">PRIVACY POLICY</a>
+                        <a href="http://www.oanda.com/corp/contact/" class="main-link">CONTACT US</a>
+                        <a href="/about" class="main-link">ABOUT US</a>
+    
+                    </div>
+                    <div class="right-links col-xs-12 col-md-4">
+                        <a href="https://www.facebook.com/OANDAfx"><i class="icon-facebook"></i></a>
+                        <a href="http://www.youtube.com/user/oanda"><i class="icon-youtube"></i></a>
+                        <a href="https://twitter.com/OANDA"><i class="icon-twitter"></i></a>
+                        <a href="https://plus.google.com/+oanda/posts"><i class="icon-gplus"></i></a>
+                        <a href="http://www.linkedin.com/company/oanda"><i class="icon-linkedin-1"></i></a>
+                        <a href="https://github.com/oanda"><i class="icon-github-squared"></i></a>
+                    </div>
+    
+        
+                </div>
+            </div>
+    
+     <div class="wide-separator"></div>
+    
+    <div id="footer-text" class="container">
+      <div id="global-disclaimer">
+    <p>&#169; 1996 - 2019 OANDA Corporation. All rights reserved. "OANDA", "fxTrade" and OANDA's "fx" family of trademarks are owned by OANDA Corporation. All other trademarks appearing on this Website are the property of their respective owners.</p>
+    <p>Leveraged trading in foreign currency contracts or other off-exchange products on margin carries a high level of risk and may not be suitable for everyone. We advise you to carefully consider whether trading is appropriate for you in light of your personal circumstances. You may lose more than you invest (except for OANDA Europe Ltd customers who have negative balance protection). Information on this website is general in nature. We recommend that you seek independent financial advice and ensure you fully understand the risks involved before trading. Trading through an online platform carries additional risks. <a href="https://www1.oanda.com/resources/legal/">Refer to our legal section here</a>.</p>
+    </div>
+    
+    <p><strong>OANDA Corporation</strong> is a registered Futures Commission Merchant and Retail Foreign Exchange Dealer with the <a href="http://www.cftc.gov/index.htm" rel="nofollow">Commodity Futures Trading Commission</a> and is a member of the <a href="https://www.nfa.futures.org/" rel="nofollow">National Futures Association</a>. No: 0325821. Please refer to the <a class="external-link" href="http://www.nfa.futures.org/NFA-investor-information/investor-alerts/forex-investor-alert-february2007.HTML" rel="nofollow">NFA's FOREX INVESTOR ALERT</a> where appropriate.</p>
+    <p><strong>OANDA (Canada) Corporation ULC</strong> accounts are available to anyone with a Canadian bank account. OANDA (Canada) Corporation ULC is regulated by the <a href="http://www.iiroc.ca/Pages/default.aspx" rel="nofollow">Investment Industry Regulatory Organization of Canada </a> (IIROC), which includes IIROC's online advisor check database (<a href="http://www.iiroc.ca/investors/knowyouradvisor/Pages/default.aspx" rel="nofollow">IIROC AdvisorReport</a>), and customer accounts are protected by the Canadian Investor Protection Fund within specified limits. A brochure describing the nature and limits of coverage is available upon request or at <a href="http://www.cipf.ca/Public/CIPFCoverage/CoveragePolicy.aspx" rel="nofollow">www.cipf.ca</a>.</p>
+    <p><strong>OANDA Europe Limited</strong> is a company registered in England number 7110087, and has its registered office at Floor 9a, Tower 42, 25 Old Broad St, London EC2N 1HQ. It is authorised and regulated by the&#160;<a href="http://www.fca.org.uk/" rel="nofollow">Financial Conduct Authority</a>, No: 542574.</p>
+    <p><strong>OANDA Asia Pacific Pte Ltd</strong> (Co. Reg. No 200704926K) holds a Capital Markets Services Licence issued by the <a href="http://www.mas.gov.sg/" rel="nofollow">Monetary Authority of Singapore</a>.</p>
+    <p><strong>OANDA Australia Pty Ltd</strong>&#160;is regulated by the Australian Securities and Investments Commission ASIC (ABN 26 152 088 349, AFSL No. 412981) and is the issuer of the products and/or services on this website. It's important for you to consider the current <a href="/register/docs/divisions/oau/financial_services_guide.pdf">Financial Service Guide (FSG)</a>, <a href="/register/docs/divisions/oau/product_disclosure_statement.pdf">Product Disclosure Statement ('PDS')</a>, Account Terms and any other relevant OANDA documents before making any financial investment decisions. These documents can be found <a href="/resources/legal/australia/">here</a>.</p>
+    <p><strong>OANDA Japan Co., Ltd.</strong> First Type I Financial Instruments Business Director of the Kanto Local Financial Bureau (Kin-sho) No. 2137 Institute Financial Futures Association subscriber number 1571.</p> <br><br><br>
+    
+    <script type="text/javascript" src="//js.maxmind.com/js/apis/geoip2/v2.1/geoip2.js"></script>
+    
+    <script type="text/javascript"> 
+    
+    var onSuccess = function(location){
+              var countries =["HK","SG"];
+     var oaucountries = ["BD","BM","BN","BO","BT","JM","BR","BZ","TK","GT","GP","GY","SV","HT","HN","HM","VE","PY","PA","PF","PG","PE","PH","EC","VN","SB","MF","MO","MN","MV","MY","MX","FJ","NI","NF","NP","CK","CO","CL","CC","CX","CR","CW","SX","KN","KY","DO","DM","VG","UY","LC","TV","TW","TO","TH","TC","AG","AR","AU","VU","AW","ID"];
+              var loc = location.country.iso_code;
+        	     if(countries.indexOf(loc) > -1)
+                  {
+                  $('.oapdisclaimer').show();
+                  }
+          	     else if(oaucountries.indexOf(loc) > -1)
+        	      {
+                   $('.oaudisclaimer').show();
+                 }
+    };
+    
+    var onError = function(error){console.log('error ',e)};
+    geoip2.country(onSuccess, onError);
+    </script>
+    
+        <div class="oapdisclaimer" id="fixed-risk-warning" hidden="true">
+       <div  style="position: fixed; bottom: 0; left: 0; width: 100%; margin: 0 auto; padding: 5px; background-color: #000; color: #fff; z-index: 900;"><span style="display: block; text-align: center;"><span class="white-links">Leverage trading is high risk. Losses can exceed investments.This advertisement has not been reviewed by the Monetary Authority of Singapore.</span></span></div></div>
+            
+     <div class="oaudisclaimer" id="fixed-risk-warning" hidden="true">
+       <div  style="position: fixed; bottom: 0; left: 0; width: 100%; margin: 0 auto; padding: 5px; background-color: #000; ;font:6px;font-family:helvetica neue,Helvetica,Arial,sans-serif;color: #fff; z-index: 500;"><span style="display: block; text-align: center;"><span class="white-links"> CFDs are complex financial products and come with a high risk of losing money.
+                <br> <strong> 76.8% of retail client accounts lose money when trading CFDs with this provider.</strong>
+              <br> You should consider whether you can afford to take the high risk of losing your money.</span></span></div></div>
+    
+    <script>
+      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+      (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+      m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+      })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+    
+      ga('create', 'UA-47661500-1', 'auto');
+      ga('send', 'pageview');
+    
+    </script>
+    
+    <script type="text/javascript">
+    function googleTranslateElementInit() {
+      new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: 'de,es,fr,it,ja,ko,pt,ru,vi,zh-CN,zh-TW', layout: google.translate.TranslateElement.InlineLayout.SIMPLE, gaTrack: true, gaId: 'UA-47661500-1'}, 'google_translate_element');
+    }
+    </script><script type="text/javascript" src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+    
+    <script type="text/javascript">
+    setTimeout(function(){var a=document.createElement("script");
+    var b=document.getElementsByTagName("script")[0];
+    a.src=document.location.protocol+"//script.crazyegg.com/pages/scripts/0028/8860.js?"+Math.floor(new Date().getTime()/3600000);
+    a.async=true;a.type="text/javascript";b.parentNode.insertBefore(a,b)}, 1);
+    </script>
+    
+    <style>
+    * {
+      box-sizing: border-box;
+    }
+    .column {
+       float: left;
+      width: 15%;
+      padding: 25px;
+      font-size:8px;
+      
+    }
+    </style>
+    
+    </div>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a3e7de9a4939fd2d',t:'MTc4OTk4MTEyMQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

@@ -1,0 +1,36 @@
+ What are pro and non-pro classifications for Massive's stock data? | Massive Individuals Businesses Docs Pricing Company Massive Open main menu Loading... Footer Massive 
+Products Stocks Options Indices Currencies Futures Docs Documentation Tutorials Knowledge Base API Status Company About Massive Blog Careers Product Roadmap Legal Privacy 
+Terms Subscribe to our newsletter The latest news, articles, and resources, sent to your inbox. Facebook Instagram X (formerly Twitter) GitHub YouTube © Massive.com, Inc. 
+Knowledge Base / What are pro and non-pro classifications for Massive's stock data? What are pro and non-pro classifications for Massive's stock data? Stocks Business FAQ 
+Massive asks one set of eleven registration questions for every asset class: answer yes to question one and no to the other ten and you are non-professional. Individual plans 
+are for non-professional use; professional use needs a Business plan. There is no stock-specific version of this test, which is the first thing worth knowing: Massive asks 
+the same eleven questions whether the subscription you want is Stocks, Options, Indices, Currencies or Futures. The exchange definitions sitting behind them are not 
+identical, so if you land near the line, read the one covering the data you want. Work through them on Am I a professional or non-professional subscriber? , then come back 
+here for what it means for a Stocks subscription. Applies to Plans: Stocks Basic, Starter, Developer and Advanced are Individual plans and are for non-professional 
+subscribers. Stocks Business carries the commercial licence. Endpoints: all of them. Nothing in the API behaves differently, because this is a licensing question rather than 
+a technical one. Asset classes: US stocks and ETFs. Massive asks the same eleven questions for every other asset class too, though the exchange definitions behind them 
+differ. Who sets the rule for stocks For US stocks the definitions come from the exchanges behind the consolidated tape, the CTA and UTP plans, and from the FINRA facilities 
+that carry off-exchange prints. Their fee schedules charge per user and per category, and they hold the vendor responsible for classifying users correctly. Massive applies 
+their definitions rather than writing its own, which is why the answer does not change if you move to another vendor. What it decides for a Stocks subscription Your 
+classification decides which side of the catalogue you can buy from, and that is a bigger difference than a price: What changes Non-professional Professional Plans you can 
+buy Stocks Basic, Starter, Developer, Advanced Stocks Business Where to buy massive.com/pricing , self-serve massive.com/business , some self-serve, the rest through sales 
+What you may do with the data Your own personal, non-business use Whatever the commercial licence covers, including showing it to clients Redistribution Not permitted Needs a 
+licence that covers it explicitly Do not assume the Business plan is the Individual plan at a higher price. The Business plans are packaged differently, and some data an 
+Individual Advanced tier includes is sold as a separate expansion on the Business side. How to get it right Take the eleven-question test on Am I a professional or 
+non-professional subscriber? . If you sit near the line, describe what you are doing in a chat at massive.com/contact and we will tell you which side you fall on. If you are 
+professional and want help choosing, go to sales through massive.com/business or sales@massive.com . If your circumstances change, tell us. Correcting it forward is routine; 
+discovering it in an audit is not. Why the exchanges care The exchanges care because their fee schedules charge per user and per category, so the count and the classification 
+of users is what they are paid on. That is why the question is asked at signup rather than left to you, and why the difference in price is a licensing cost rather than a 
+difference in the quality of the data. Citizenship and location are not part of the test: use is. If you see an error Nothing in the API refuses a request because of your 
+classification, so a refusal is about your subscription rather than your status. {"status":"NOT_AUTHORIZED"} means the product or tier does not cover the request. It is not a 
+professional-status check. A Stocks plan that will not let you buy it is usually an account already marked professional. That is a classification answer, not a billing fault. 
+Related Am I a professional or non-professional subscriber? What are pro and non-pro classifications for Massive's options data? Can I use Massive's data if I am not a US 
+citizen? How can I redistribute Massive's market data? What are the different Massive subscriptions I can use? Was this article helpful? Loading... Yes No Modernizing Wall 
+St. Reimagining financial market data for the 21st century. About Massive Schedule a demo Talk with our market data experts Calendly Recommended Can't find the answer you're 
+looking for? Contact our team . Title Are all indices available through the basic subscription tier? Data Coverage Category Data Coverage Indices Category Indices Description 
+No, and the ones it withholds are the famous ones: SPX, DJI, RUT and VIX all need a paid tier. Basic still reaches more than 10,000 of the 13,000-odd indices Massive 
+publishes, and NDX and the Nasdaq Composite are among them. Title Does Massive offer dark pool data? Data Coverage Category Data Coverage Stocks Category Stocks Description 
+Yes. Off-exchange prints, which include dark pool executions, arrive on the ordinary trades feed and are identified by an exchange ID of 4. There is no separate dark pool 
+endpoint, and no way to tell which individual venue a print came from. Title Does Massive offer pre-market and after-hours data? FAQ Category FAQ Stocks Category Stocks 
+Description Yes. Every extended-hours trade and quote is published, from 04:00 to 20:00 Eastern. There is no session parameter, so you select a session with timestamps, and 
+expect far fewer aggregate bars outside regular hours because most extended-hours trades do not update a bar. 

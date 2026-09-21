@@ -1,0 +1,25 @@
+ API Integrations & Third-Party Libraries Documentation | Tiingo --> --> Home Documentation Products About Pricing Blog App Login Sign-up Sign-up/Login 1. General 1.1 
+Overview 1.2 Connecting 1.3 Changelog 2. REST 2.1 End-of-Day 2.2 News 2.3 Crypto 2.4 Forex 2.5 Equity Realtime 2.6 IEX 2.7 BOATS Overnight 2.8 Fundamentals 2.9 Fund Fees 2.10 
+Dividends 2.11 Splits 3. Websockets 3.1 Crypto 3.2 Forex 3.3 Equity Realtime 3.4 IEX 3.5 BOATS Overnight 4. Utilities 4.1 Search 5. Appendix 5.1 Developer Program 5.2 
+Integrations 5.3 Symbology Home Documentation Products About Pricing Blog App 5. Appendix 5.2 Integrations The following are third-party programs, plugins, software, and 
+libraries that integrate into Tiingo's data. This packages are not owned, managed by, or affiliated with/by Tiingo; however, these are tools made by the community that others 
+have found helpful. Please use at your own risk. If you would like your software package and/or library added to the list, check out our Developer Program . 5.2 Appendix - 
+Integrations 5.2.1 Excel Name & Project Page Description XLQ/XLQ2 XLQ is an Excel plugin that interfaces with a variety of data providers. It’s unique in that it allows users 
+to keep a local point-in-time database from each data provider, with a particular focus on high-performance, especially for real-time feeds. Tiingo EOD, IEX (realtime), and 
+Crypto (realtime) are enabled for XLQ starting with v6.3.. Spreadserve Addin (SSAddin) A flexible open-source Excel plugin for the more technical user looking for websocket 
+integration. Ultimate Excel Stock Quotes Downloader An Excel sheet to quickly download historical stock quotes from Tiingo and other sources with a simple UI. 5.2 Appendix - 
+Integrations 5.2.2 Frameworks Name & Project Page Description LEAN LEAN is a backtesting engine written by QuantConnect that works with Python (3.6+), F#, and C#. It is built 
+to be high-performance and entirely open source. See their documentation here: Importing Tiingo Price Data TuringTrader TuringTrader is an open-source backtesting engine 
+available at TuringTrader.org that offers gorgeous backtesting reporting analysis, portfolio optimization, ability to design your own investment strategies, and allows you to 
+plug into high-quality data feeds such as Tiingo. 5.2 Appendix - Integrations 5.2.3 Java Name & Project Page Description tiingoclient An open-source java package that 
+integrates into Tiingo. 5.2 Appendix - Integrations 5.2.4 Matlab Name & Project Page Description MATLAB Package for Tiingo Data A MATLAB Package to query price data from 
+Tiingo. 5.2 Appendix - Integrations 5.2.4 Python Name & Project Page Description tiingo-python An open-source Python package that allows you to seamless integrate your Python 
+code with Tiingo. pandas-datareader An open-source Python package that integrates multiple datasources including Tiingo. 5.2 Appendix - Integrations 5.2.5 R Name & Project 
+Page Description riingo An open-source R package that integrates Tiingo's APIs. quantmod An open-source R package that integrates multiples data sources, including Tiingo. 
+5.2 Appendix - Integrations 5.2.6 Software Name & Project Page Description AmiBroker & AmiQuote A fast, flexible technical analysis and trading system development platform. 
+AmiBroker is the software analysis tool and AmiQuote is the data downloader. Chartsy|One A Java-based technical analysis, charting, screening and backtesting platform. Fund 
+Manager Portfolio management software for individual investors, professional traders, and investment advisors that tracks stocks, funds, options, and bonds, with graphing, 
+reporting, gain calculations, and internet price retrieval. LogicalInvest's QuantTrader A powerful portfolio backtesting platform to help you optimize and backtest your 
+portfolio.. QDownloader An online tool to obtain Tiingo's data in a format compatible with MetaStock's converter. QuantConnect QuantConnect is a powerful online backtesting 
+engine integrated with popular brokerages. Its open-source and lets you backtest trades using a variety of datasets, including Tiingo's Daily Price Data. TrendXplorer A 
+transparent, tactical asset allocation strategies signals service that is open to all. 

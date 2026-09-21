@@ -1,0 +1,582 @@
+ 
+ Individual Pricing - Twelve Data 
+ Now Live: Cboe Europe real-time data for all major European stocks. 
+ Data add-ons 
+ XSES
+ closing in 5m 
+ 0700 
+ 429.80 
+  2.58 % 
+ EUR/USD 
+ 1.15 
+ -0.03 % 
+ AAPL 
+ 335.35 
+ -0.49 % 
+ TSLA 
+ 369.40 
+  0.87 % 
+ NESN 
+ 76.70 
+  0.56 % 
+ 7203 
+ 3,013.00 
+ -0.69 % 
+ USD/JPY 
+ 157.21 
+  0.22 % 
+ XPT/USD 
+ 1,003.20 
+  0.33 % 
+ ETH/USD 
+ 2,699.91 
+  2.07 % 
+ 2330 
+ 2,480.00 
+  0.81 % 
+ 005930 
+ 274,000.00 
+  4.98 % 
+ MC 
+ 405.33 
+  0.63 % 
+ AZN 
+ 12,426.00 
+ -0.59 % 
+ ASML 
+ 1,494.60 
+  3.36 % 
+ Main market
+ XSES is currently active.
+ Closing in 5 minutes
+ 16:54 
+ 00:00 
+ 09:00 
+ 17:00 
+ 23:59 
+ Trading Hours (Monday - Friday): 
+ Pre-market 
+ 08:30 - 09:00 
+ Main market 
+ 09:00 - 17:00 
+ Exchange details 
+ All times are displayed in the Asia/Singapore timezone (+08, UTC+08:00).
+ twelve data
+ Products 
+ Market Data
+ Stocks 
+ US & global coverage 
+ Forex 
+ Physical currency 
+ ETFs 
+ Exchange-traded fund 
+ Crypto 
+ Digital currency 
+ Commodities 
+ Raw materials 
+ Mutual funds 
+ Managed investments 
+ More
+ data 
+ Fundamentals 
+ Spreadsheets 
+ Google Sheets 
+ Excel 
+ Tools 
+ Exchanges 
+ Markets 
+ Currency converter 
+ Developers 
+ Documentation 
+ Documentation 
+ Start integrating Twelve Data’s products
+ and tools 
+ Resources 
+ WebSocket 
+ Batch
+ requests 
+ Technical indicators 
+ Request
+ builder 
+ Guides 
+ Free
+ trial 
+ Historical
+ data 
+ Extended
+ hours data 
+ FAQs 
+ Support
+ System status
+ Artificial Intelligence
+ Roadmap
+ Company 
+ About Twelve Data 
+ We provide financial data, tools, and
+ dedicated solutions 
+ Expertise
+ Careers
+ Customers
+ Trust
+ Startups
+ Students
+ Brand assets
+ News
+ Pricing 
+ For Individual 
+ Personal & non-commercial 
+ For Business 
+ Commercial & professional 
+ Book a demo
+ Sign in 
+ Book a demo
+ Sign in 
+ For Individual 
+ For Business 
+ Pricing for Individual 
+ Access the data for personal, internal, and non-commercial purposes.
+ Annual -17% 
+ Ultra 
+ for high-volume personal use 
+ $ 999 
+ $ 832 
+ Save $ 1,998 
+ $ 9,990 billed yearly
+ Subscribe 
+ Credits 
+ '
+ title="<span>
+ API credits reset each minute. Each endpoint or subscription has a specific credit weight per symbol, detailed in the documentation.
+ <a class="tooltip-twelvedata-link" href="#" type="button" data-toggle="modal" data-target="#pricing-credits-modal">
+ Learn more
+ </a>
+ </span>"
+>
+ 10,946 API + 10,000 WS 
+ 10,946 API + 10,000 WS 
+ 4,181 API + 5,000 WS 
+ 2,584 API + 2,500 WS 
+ Everything from Pro, plus 
+ '
+ title="Full access to every supported global market."
+>
+ All markets 
+ '
+ title="Use the data internally for programmatic processing, analysis, system integration, and internal display. The data may not be redistributed or made available to external parties."
+>
+Internal non-display data access
+ '
+ title="Detailed metrics for mutual funds, including performance, composition, and fund-level characteristics."
+>
+Mutual funds metrics data
+ '
+ title="Pre-calculated calculations, metric trends, and analysts&#039; forecasts."
+>
+Analysis data
+ '
+ title="ETF-specific metrics such as holdings, weights, AUM, and related characteristics."
+>
+ETFs metrics data
+ '
+ title="Service level agreement guaranteeing 99.95% platform uptime, excluding scheduled maintenance."
+>
+99.95% SLA
+ '
+ title="A dedicated customer success manager to support onboarding, usage optimization, and ongoing account needs."
+>
+Dedicated CSM
+ Most popular 
+ Pro 
+ for advanced integrations 
+ $ 229 
+ $ 191 
+ Save $ 458 
+ $ 2,290 billed yearly
+ Subscribe 
+ Credits 
+ '
+ title="<span>
+ API credits reset each minute. Each endpoint or subscription has a specific credit weight per symbol, detailed in the documentation.
+ <a class="tooltip-twelvedata-link" href="#" type="button" data-toggle="modal" data-target="#pricing-credits-modal">
+ Learn more
+ </a>
+ </span>"
+>
+ 1,597 API + 1,500 WS 
+ 1,597 API + 1,500 WS 
+ 987 API + 1,000 WS 
+ 610 API + 500 WS 
+ Everything from Grow, plus 
+ '
+ title="Expanded access to 76 global markets."
+>
+ 70+ markets 
+ '
+ title="Live price updates for 15+ European market instruments with low latency. Available via Data add-ons."
+>
+Real-time EU market data
+ '
+ title="ASX market data provided with a standard exchange-mandated delay. Available via Data add-ons."
+>
+Delayed AU market data
+ '
+ title="Market data for bonds and other fixed income instruments, including prices and yields where available."
+>
+Fixed income market data
+ '
+ title="Net asset values for mutual funds, updated according to fund reporting schedules."
+>
+Mutual funds NAV
+ '
+ title="Optional premium datasets that can be enabled on top of your base plan as needed."
+>
+Data add-ons
+ Grow 
+ for hobby projects 
+ $ 79 
+ $ 66 
+ Save $ 158 
+ $ 790 billed yearly
+ Subscribe 
+ Credits 
+ '
+ title="<span>
+ API credits reset each minute. Each endpoint or subscription has a specific credit weight per symbol, detailed in the documentation.
+ <a class="tooltip-twelvedata-link" href="#" type="button" data-toggle="modal" data-target="#pricing-credits-modal">
+ Learn more
+ </a>
+ </span>"
+>
+ 377 API + 8 trial WS 
+ 377 API + 8 trial WS 
+ 144 API + 8 trial WS 
+ 55 API + 8 trial WS 
+ Everything from Basic, plus 
+ '
+ title="Expanded access to 27 global markets."
+>
+ 20+ markets 
+ '
+ title="View-only access for internal use within your applications and dashboards. The data may be displayed but cannot be programmatically processed, stored, transformed, or redistributed."
+>
+Internal display data access
+ '
+ title="Access live price updates for US-listed stocks with minimal latency, suitable for trading, monitoring, and analytics."
+>
+Real-time US stocks
+ '
+ title="End-of-day prices for stocks and ETFs across global markets, updated after each exchange close."
+>
+EOD global equities and ETFs market data
+ '
+ title="Price data for major commodity markets, including energy, metals, and agricultural instruments."
+>
+Commodities market data
+ '
+ title="Company financials, ratios, and key fundamentals sourced from official filings and calculated by Twelve Data."
+>
+Fundamentals data
+ '
+ title="Unlimited daily usage within your plan’s minute scope, without daily request caps."
+>
+No daily limits
+ Unlimited opportunities -->
+ Basic 
+ for getting hands on service 
+ Free 
+ Save $ 0 
+ $ 0 billed yearly
+ Subscribe 
+ Credits 
+ '
+ title="<span>
+ API credits reset each minute. Each endpoint or subscription has a specific credit weight per symbol, detailed in the documentation.
+ <a class="tooltip-twelvedata-link" href="#" type="button" data-toggle="modal" data-target="#pricing-credits-modal">
+ Learn more
+ </a>
+ </span>"
+>
+ 8 API (800 a day) + 8 trial WS 
+ '
+ title="Data may be used internally for testing, evaluation, or development purposes only. The data cannot be displayed to users, shared externally, or used in production systems."
+>
+Internal non-display usage
+ '
+ title="Live price updates for US-listed stocks and ETFs with low latency, suitable for trading and real-time monitoring."
+>
+Real-time US equities and ETFs
+ '
+ title="Streaming and real-time exchange rates for major, minor, and exotic currency pairs."
+>
+Real-time forex market data
+ '
+ title="Live prices and market data for cryptocurrencies across dozens of exchanges."
+>
+Real-time crypto market data
+ '
+ title="Static and slowly changing datasets such as symbols, exchanges, identifiers, and market metadata."
+>
+Reference data
+ '
+ title="Ready-to-use technical indicators calculated from market data."
+>
+Technical indicators
+ '
+ title="Use the data directly in spreadsheet tools for analysis, modeling, and reporting."
+>
+Spreadsheets
+ '
+ title="Retrieve data for multiple symbols or parameters in a single request to improve efficiency."
+>
+Batch requests
+ '
+ title="Limited access to symbols across global markets for evaluation and testing purposes."
+>
+Global trial symbols
+ API credits per minute 
+ Each API endpoint has a specific data weight that indicates how many credits you will consume. API credits quota will be reset each minute, and there are no hidden extra data weights unless explicitly stated in the corresponding documentation section. 
+ Example 
+ If you access /time_series data for AAPL, MSFT, and TSLA - you would consume a total of (1 credit) * (3 symbols) = 3 credits. 
+ If you access /income_statement for the above three stocks, you will consume (100 credits) * (3 symbols) = 300 credits. 
+ WebSocket (WS) credits 
+ Each WebSocket method has its subscription weight, consumed when subscribing to the symbols data stream. 
+ Example 
+ If you access /quotes/price WS endpoint, which has a data weight of 1 WebSocket credit per successfully subscribed symbol. By subscribing to the AAPL, EUR/USD, USD/JPY, BTC/USD, ETH/BTC - 5 WS credits are consumed. 
+ Subscribe 
+ Subtotal 
+ Discount 
+ Tax 
+ Total due now 
+ Are you an AI agent? See pricing 
+ Special pricing for students 
+ Eligible students can receive Twelve Data plans with a 12-month discount.
+ I'm a student
+ Ultra 
+ From $329 /mo 
+ Select 
+ Pro 
+ From $99 /mo 
+ Select 
+ Grow 
+ From $29 /mo 
+ Select 
+ Basic 
+ Free 
+ Select 
+ Key features and limits
+ API credits 
+ 2,584+
+ 610+
+ 55+
+ 8 (800 a day)
+ WS credits 
+ 2,500+
+ 500+
+ 8 trial
+ 8 trial
+ Daily limits 
+ Unlimited
+ Unlimited
+ Unlimited
+ 800 / day
+ Batch requests 
+ Libraries 
+ Markets 
+ 85 
+ 76 
+ 27 
+ 3 
+ SLA 
+ 99.95%
+ Technical indicators 
+ 100+
+ 100+
+ 100+
+ 100+
+ Spreadsheets 
+ Stocks
+ Reference data 
+ Market data 
+ Pre/post data 
+ Technical indicators 
+ Market movers 
+ Logo 
+ Profile 
+ Dividends 
+ Splits 
+ Earnings 
+ IPO calendar 
+ Statistics 
+ Insider transactions 
+ Income statement 
+ Balance sheet 
+ Cash flow 
+ Key executives 
+ Institutional holders 
+ Direct holders 
+ Earnings estimate 
+ Revenue estimate 
+ EPS trend 
+ EPS revisions 
+ Growth estimates 
+ Recommendations 
+ Price target 
+ Analyst ratings 
+ Tax information 
+ Edgar filings archive 
+ Fund holders 
+ Sanctioned entities 
+ Forex
+ Reference data 
+ Market data 
+ Exchange rate 
+ Currency conversion 
+ Technical indicators 
+ Market movers 
+ ETFs
+ Reference data 
+ Market data 
+ Options 
+ Technical indicators 
+ Market movers 
+ Summary 
+ Performance 
+ Risk 
+ Composition 
+ Mutual funds
+ Reference data 
+ Market data 
+ Technical indicators 
+ Market movers 
+ Summary 
+ Performance 
+ Risk 
+ Ratings 
+ Composition 
+ Purchase info 
+ Sustainability 
+ Cryptocurrencies
+ Reference data 
+ Market data 
+ Exchange rate 
+ Currency conversion 
+ Technical indicators 
+ Market movers 
+ Commodities
+ Reference data 
+ Market data 
+ Currency conversion 
+ Technical indicators 
+ Bonds
+ Reference data 
+ Market data 
+ Technical indicators 
+ Billing
+ Contract length 
+ Monthly / Annual
+ Monthly / Annual
+ Monthly / Annual
+ Monthly / Annual
+ Card / PayPal payments 
+ Wire transfer / ACH 
+ Support
+ Email and live chat 
+ Slack Connect 
+ Your preferred communication channel 
+ Dedicated customer success manager 
+ FAQ 
+ Questions? Answers. 
+ What currency are your prices in? 
+ They're in US dollars. 
+ Do you offer discounts or free trials? 
+ We do offer 20% students and startups discounts. Free trial is available under the Basic plan. Learn more Besides, we never run discounts and offer free trials on upper-tier plans. 
+ What payment methods do you offer? 
+ We accept PayPal and all major credit cards (including Visa, Mastercard, Discover, American Express and UnionPay.) 
+ Are there any contracts, hidden charges or setup fees? 
+ No contracts, no hidden charges, and no setup fees. You can switch your plan or cancel your Twelve Data subscription at any time. 
+ How can I switch my plan? 
+ Upgrade or downgrade your account anytime from your Dashboard. Upgrades take effect immediately on a pro-rated basis, while downgrades and cancellations become effective at the end of your current billing period. 
+ How can I cancel my plan? 
+ Cancel your account anytime from your Dashboard. After canceling, you'll still be able to use your plan until the end of the subscription period. 
+ How can I switch to annual billing? 
+ Switch to annual billing at anytime from your Dashboard. Changes take effect immediately, and any unused amount will be added to your balance. 
+ What is your refund policy? 
+ In most cases, payments for Twelve Data subscriptions aren't refundable. Learn more 
+ Can I purchase only one dataset? 
+ No, we don't offer datasets separately. Twelve Data plans include access to all our datasets. 
+ What are the API & WebSocket credits? 
+ Credits are the core metric used to access data on our platform. Standard request to API consumes 1 API credit, which means that you can request approximately 610 symbols per minute on our Pro 610 plan. Assuming you want to stream the data for 300 symbols, that would cost your 300 WebSocket credits. If you need some help or advice on this, contact us anytime. Learn more 
+ Can you provide unlimited API or WS credits? 
+ With a custom plan, we can provide any API & WS credits limit you require. This limit has to be specified explicitly and can not be just unlimited. Learn more 
+ Working with Twelve Data 
+ Twelve Data guides you through every step of your journey in the knowledge center . 
+ Have other questions? 
+ If you have more questions on our pricing and plans, contact us so we can help. 
+ Customer testimonials 
+ I've been using Twelve Data for over 3 years and I just can't see myself running
+ our algorithmic trading company without it at this point.
+ Runar Bogen 
+ Co-founder at Niuton 
+ Using Twelve Data to empower our FinTech application helped us increase user base by
+ over 200% compared to the previous year.
+ Anshul Mittal 
+ Co-founder at Salt 
+ We have been striving to find a reliable company that will completely fulfill our highest standards.
+ Twelve Data met all the requirements by providing financial data together with exceptional service.
+ As a result, we were able to optimize our current data workflow and expand our presence in new markets,
+ leading to new investment opportunities.
+ Chi Lee 
+ CTO at RiverRock 
+ The team at Twelve Data offered fantastic support in helping to create a comprehensive algorithmic system from scratch.
+ The results meet expectations and I am looking forward to working on additional enhancements.
+ The combination of their data and the final product was exactly what I was looking for.
+ Alan Goldstein 
+ Individual Investor 
+ After switching to Twelve Data - we've been able to achieve a significant boost in the performance of our
+ trading system due to the institutional-grade quality of the data supplied at reasonable prices.
+ Furthermore, we have created powerful visualizations and charts that leveled up of user experience of our customers.
+ Wei Zhang Lee 
+ Quantitative Developer 
+ The most important thing that Twelve Data does is back up their products with amazing customer support
+ and actionable content on their help center.
+ Dennis Brotzky 
+ Technical Lead at Fey 
+ Why Twelve Data? 
+ For more than five years we've been collecting the entire world's financial data and developing professional tools to help people create their financial products. We've earned the trust of many leading FinTechs, and now we're hoping to earn yours.
+ Home
+ Pricing 
+ twelve data
+ Copyright © 2026 
+ Twelve Data Pte. Ltd. All rights reserved. 
+ Products 
+ Stocks 
+ Forex (FX) 
+ Crypto 
+ ETFs 
+ Mutual funds 
+ Exchanges 
+ Search symbols 
+ Excel 
+ Google Sheets 
+ Pricing 
+ Developers 
+ API documentation 
+ WebSocket documentation 
+ Request builder 
+ System status 
+ Roadmap 
+ Company 
+ About 
+ Customers 
+ Education 
+ Expertise 
+ Careers 
+ Brand assets 
+ News 
+ Resources 
+ Support 
+ Contact 
+ Privacy policy 
+ Terms of use 
+ Security center 
+ Sitemap 

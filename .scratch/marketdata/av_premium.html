@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Premium membership plans for enhanced access to Alpha Vantage stock market APIs.">
+
+    <title>Premium API Key | Alpha Vantage</title>
+
+    <!-- Scripts -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-FQEDGD32JV"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-FQEDGD32JV');
+    </script>
+    <script>!function(w,d,s,u){if(w.oaiq)return;var q=function(){q.q.push(arguments)};q.q=[];w.oaiq=q;var j=d.createElement(s);j.async=1;j.src=u;var f=d.getElementsByTagName(s)[0];f.parentNode.insertBefore(j,f)}(window,document,"script","https://bzrcdn.openai.com/sdk/oaiq.min.js");oaiq("init",{pixelId:"7fcjg8nFJtW8vxh9FvVQWv",debug:true});</script>
+    <script src="https://js.stripe.com/v2/" type="text/javascript"></script>
+    <script type="text/javascript">
+        Stripe.publishableKey = 'pk_live_51CWP16Kxi8in7NzqvDzXGUFBrB9fBZzXOIlkmTgwUhdgwtFqYtREKZNHXIMIwRed19RMZbXMiY7SX20gveT61uTs00zYCDJPIx';
+    </script>
+    <script>
+
+        $(function() {
+            $('#3').hide();
+            $('#table-content-3').hide();
+
+            $('#pricing-15').css({'border':'solid 2px black','color':'black'});
+            $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+            $('#plan-drop-down').val('plan15').change();
+
+            $('html, body').animate({
+                scrollTop: $("#1").offset().top
+            }, 2000);
+
+
+            $('#post-premium').submit(function(event) {
+                event.preventDefault();
+                if ($('#email').val().trim() === ''){
+                    $('#results').text('Email address missing - please try again...');
+                    $("#results").show().delay(7000).fadeOut();
+                    return false;
+                }
+                $('#user_submit').prop("disabled",true);
+                $('#results').text('Validating payment information - do not refresh page...');
+
+                console.log($('#plan-drop-down').val());
+
+                var card = {
+                    number: $("#credit_card_number").val(),
+                    expMonth: $("#expiry_month").val(),
+                    expYear: $("#expiry_year").val(),
+                    cvc: $("#cvv").val()
+                };
+
+                Stripe.createToken(card, function(status, response) {
+                    if (status === 200) {
+                        console.log(status, response);
+                        $('#results').text('Upgrading API key...');
+                        $.ajax({
+                            url : "/create_premium/", // the endpoint
+                            type : "POST", // http method
+                            data : { name_text : $('#name').val(),
+                                     email_text: $('#email').val(),
+                                     plan_text: $('#plan-drop-down').val(),
+                                     old_key: 'deprecated',
+                                     stripe_id: response.id},
+                            // handle a successful response
+                            success : function(json) {
+                                console.log('success');
+                                $('#name').val(''); // remove the value from the input
+                                $('#email').val('');
+                                $('#credit_card_number').val('');
+                                $('#cvv').val('');
+                                $('#currentkey').val('');
+                                $('#results').text('');
+
+                                // disable all fields
+                                $('#name').prop("disabled",true);
+                                $('#email').prop("disabled",true);
+                                $('#currentkey').prop("disabled",true);
+                                $('#credit_card_number').prop("disabled",true);
+                                $('#cvv').prop("disabled",true);
+                                $('#plan-drop-down').prop("disabled",true);
+                                $('#expiry_month').prop("disabled",true);
+                                $('#expiry_year').prop("disabled",true);
+                                $('#user_submit').prop("disabled",true);
+
+
+                                $('#confirmationp1').text(json.text);
+                                $('#3').show();
+                                $('#table-content-3').show();
+                                $('html, body').animate({
+                                    scrollTop: $("#3").offset().top
+                                }, 2000);
+                                gtag('event','premium_signup');
+                                oaiq(
+                                  "measure",
+                                  "subscription_created",
+                                  { type: "plan_enrollment" }
+                                );
+                            },
+                            // handle a non-successful response
+                            error : function(xhr,errmsg,err) {
+                                console.log('failure');
+                                $("#user_submit").attr("disabled", false);
+                                $('#results').text('Payment process suspended. Please make sure your current API key is valid and try again.');
+                                $('#name').val(''); // remove the value from the input
+                                $('#email').val('');
+                                $('#credit_card_number').val('');
+                                $('#cvv').val('');
+                                $('#currentkey').val('');
+
+                            }
+                        });
+                    } else { //credit card declined
+                        $("#user_submit").attr("disabled", false);
+                        $('#results').text('Credit card declined. Please try again.');
+                        $('#name').val(''); // remove the value from the input
+                        $('#email').val('');
+                        $('#credit_card_number').val('');
+                        $('#cvv').val('');
+                        $('#currentkey').val('');
+                    }
+                });
+
+                return false;
+            });
+
+
+
+
+            $('#pricing-15').click(function() {
+                $('#pricing-15').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan15').change();
+            });
+
+            $('#pricing-60').click(function() {
+                $('#pricing-60').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan60').change();
+            });
+
+            $('#pricing-120').click(function() {
+                $('#pricing-120').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan120').change();
+            });
+
+            $('#pricing-360').click(function() {
+                $('#pricing-360').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan360').change();
+            });
+
+            $('#pricing-600').click(function() {
+                $('#pricing-600').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan600').change();
+            });
+
+            $('#pricing-15-annual').click(function() {
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan15_annual').change();
+            });
+
+            $('#pricing-60-annual').click(function() {
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan60_annual').change();
+            });
+
+            $('#pricing-120-annual').click(function() {
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan120_annual').change();
+            });
+
+            $('#pricing-360-annual').click(function() {
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan360_annual').change();
+            });
+
+            $('#pricing-600-annual').click(function() {
+                $('#pricing-600').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-15').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-600-annual').css({'border':'solid 2px black','color':'black'});
+                $('#pricing-15-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-60-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-120-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#pricing-360-annual').css({'border':'solid 2px #dcdcdc','color':'black'});
+                $('#plan-drop-down').val('plan600_annual').change();
+            });
+
+//            $('#pricing-free').click(function() {
+//                window.open("https://www.alphavantage.co/support/#api-key", "_blank", "noopener,noreferrer");
+//            });
+
+
+            // This function gets cookie with a given name
+            function getCookie(name) {
+                var cookieValue = null;
+                if (document.cookie && document.cookie != '') {
+                    var cookies = document.cookie.split(';');
+                    for (var i = 0; i < cookies.length; i++) {
+                        var cookie = jQuery.trim(cookies[i]);
+                        // Does this cookie string begin with the name we want?
+                        if (cookie.substring(0, name.length + 1) == (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            var csrftoken = getCookie('csrftoken');
+
+            /*
+            The functions below will create a header with csrftoken
+            */
+
+            function csrfSafeMethod(method) {
+                // these HTTP methods do not require CSRF protection
+                return (/^(GET|HEAD|OPTIONS|TRACE)$/.test(method));
+            }
+            function sameOrigin(url) {
+                // test that a given url is a same-origin URL
+                // url could be relative or scheme relative or absolute
+                var host = document.location.host; // host + port
+                var protocol = document.location.protocol;
+                var sr_origin = '//' + host;
+                var origin = protocol + sr_origin;
+                // Allow absolute or scheme relative URLs to same origin
+                return (url == origin || url.slice(0, origin.length + 1) == origin + '/') ||
+                    (url == sr_origin || url.slice(0, sr_origin.length + 1) == sr_origin + '/') ||
+                    // or any other URL that isn't scheme relative or absolute i.e relative.
+                    !(/^(\/\/|http:|https:).*/.test(url));
+            }
+
+            $.ajaxSetup({
+                beforeSend: function(xhr, settings) {
+                    if (!csrfSafeMethod(settings.type) && sameOrigin(settings.url)) {
+                        // Send the token to same-origin, relative URLs only.
+                        // Send the token only if the method warrants CSRF protection
+                        // Using the CSRFToken value acquired earlier
+                        xhr.setRequestHeader("X-CSRFToken", csrftoken);
+                    }
+                }
+            });
+        });
+
+
+    </script>
+
+    <!-- Styles -->
+    <link href="/static/css/theDocs.all.min.css" rel="stylesheet">
+    <link href="/static/css/custom.css" rel="stylesheet">
+      <style>
+        .btn-pricing {
+            text-transform: none !important;
+            margin-bottom: 12px;
+            width: 400px;
+            text-align: left;
+        }
+        #message-container {
+            width: 400px;
+            border: 2px dotted #42DCA3;
+            padding: 5px;
+        }
+      </style>
+
+    <!-- Fonts -->
+    <link href='https://fonts.googleapis.com/css?family=Raleway:100,300,400,500%7CLato:300,400' rel='stylesheet' type='text/css'>
+
+    <!-- Favicons -->
+    <link rel="apple-touch-icon" href="/static/img/apple-touch-icon.png">
+    <link rel="icon" href="/static/img/favicon.ico">
+  </head>
+
+  <body data-spy="scroll" data-target=".sidebar" data-offset="200">
+
+
+    <!-- Sidebar -->
+    <aside class="sidebar sidebar-boxed sidebar-dark">
+
+      <ul class="nav sidenav">
+        <li id="support-page-top"><a href="#">Premium API Key</a>
+        <li><a href="#intro">Introduction</a>
+        </li>
+        <li id="table-content-2">
+          <a href="#api-key">Subscribe</a>
+        </li>
+        <li id="table-content-3">
+          <a href="#confirmation">Confirmation</a>
+        </li>
+      </ul>
+
+    </aside>
+    <!-- END Sidebar -->
+
+
+    <header class="site-header navbar-transparent">
+
+      <!-- Top navbar & branding -->
+      <nav class="navbar navbar-default">
+        <div class="container-fluid">
+
+          <!-- Toggle buttons and brand -->
+          <div class="navbar-header">
+            <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar" aria-expanded="true" aria-controls="navbar">
+              <span class="glyphicon glyphicon-option-vertical"></span>
+            </button>
+
+            <button type="button" class="navbar-toggle for-sidebar" data-toggle="offcanvas">
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+              <span class="icon-bar"></span>
+            </button>
+
+          </div>
+          <!-- END Toggle buttons and brand -->
+
+          <!-- Top navbar -->
+          <div id="navbar" class="navbar-collapse collapse" aria-expanded="true" role="banner">
+            <ul class="nav navbar-nav navbar-right">
+              <li><a href="https://www.alphavantage.co/" target="_blank">Stock API Home</a></li>
+              <li><a href="https://www.alphavantage.co/documentation/" target="_blank">Documentation</a></li>
+              <li><a href="https://www.alphavantage.co/spreadsheets/" target="_blank">Spreadsheets</a></li>
+              <!--<li class="active"><a href="">Pricing</a></li>-->
+              <li><a href="https://www.alphavantage.co/academy/" target="_blank">Academy</a></li>
+              <li><a href="https://www.alphavantage.co/support/" target="_blank">Support</a></li>
+            </ul>
+          </div>
+          <!-- END Top navbar -->
+
+        </div>
+      </nav>
+      <!-- END Top navbar & branding -->
+
+      <!-- Banner -->
+      <div class="banner auto-size" style="background-color: #5cc7b2">
+        <div class="container-fluid text-white">
+          <h1><strong>Alpha Vantage</strong> Premium API Key </h1>
+        </div>
+      </div>
+      <!-- END Banner -->
+
+
+    </header>
+
+    <main class="container-fluid">
+
+      <!-- Main content -->
+      <article class="main-content" role="main">
+
+        <section id="1" style="padding-bottom: 0;">
+          <h2 id="intro">Welcome to Premium Membership!</h2>
+            <p>At Alpha Vantage, the majority of our API endpoints can be accessed for free. For use cases that exceed our <u>standard API usage limit</u> (25 API requests per day) or require certain premium API functions, we offer a premium plan to scale your use cases. Alpha Vantage is the trusted partner of premier organizations and institutions around the globe, including:</p>
+            <p><img style="max-width: 100%; height: auto;" src="/static/img/logos_premium.jpg"></p>
+
+        </section>
+
+        <section id="2">
+          <h2 id="api-key">Get Premium API Key</h2>
+                <input type="hidden" name="stripe_id" id="id_stripe_id">
+                <input type="hidden" name="customer_id" id="id_customer_id">
+                <form method="POST" id="post-premium">
+                    <input type="hidden" name="csrfmiddlewaretoken" value="wXJcPspWxPba3ummq9yYlIIqgcdRZVuBrp94SXeK1T7kBO4dvV9wFX08BcGCQXTW">
+                    <div style="display: none;">
+                    <p class="form-label">Name:</p>
+                    <input class="premium-field" id="name" type="text">
+                    </div>
+                    <!--<p class="form-label">Current API Key:</p>-->
+                    <!--<input class="premium-field" id="currentkey" type="text">-->
+                    <p class="form-label">Choose a subscription plan:</p>
+                    <div style="display: none;">
+                    <select class="premium-field" id="plan-drop-down">
+                      <option value="plan15">75 requests/min + premium support: $49.99/month</option>
+                      <option value="plan60">150 requests/min + premium support: $99.99/month</option>
+                      <option value="plan120">300 requests/min + premium support: $149.99/month</option>
+                      <option value="plan360">600 requests/min + premium support: $199.99/month</option>
+                      <option value="plan600">1200 requests/min + premium support: $249.99/month</option>
+                      <option value="plan15_annual">75 requests/min + premium support: $499/month</option>
+                      <option value="plan60_annual">150 requests/min + premium support: $999/month</option>
+                      <option value="plan120_annual">300 requests/min + premium support: $1499/month</option>
+                      <option value="plan360_annual">600 requests/min + premium support: $1999/month</option>
+                      <option value="plan600_annual">1200 requests/min + premium support: $2499/month</option>
+                    </select>
+                    </div>
+                    <p>Monthly Plans</p>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-15" name="commit" type="button" value="75 API requests per minute + 15-minute delayed US market data + end-of-day options data: $49.99/month" style="width:900px;">
+                    <br>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-60" name="commit" type="button" value="150 API requests per minute + realtime US market data + end-of-day options data: $99.99/month" style="width:900px;">
+                    <br>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-120" name="commit" type="button" value="300 API requests per minute + realtime US market data + end-of-day options data: $149.99/month" style="width:900px;">
+                    <br>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-360" name="commit" type="button" value="600 API requests per minute + realtime US market data + realtime options data: $199.99/month" style="width:900px;">
+                    <br>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-600" name="commit" type="button" value="1200 API requests per minute + realtime US market data + realtime options data: $249.99/month" style="width:900px;">
+                    <br>
+                    <p>Annual Plans <span class="popular-label">2 months off</span></p>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-15-annual" name="commit" type="button" value="75 API requests per minute + 15-minute delayed US market data + end-of-day options data: $499/year" style="width:900px;">
+                    <br>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-60-annual" name="commit" type="button" value="150 API requests per minute + realtime US market data + end-of-day options data: $999/year" style="width:900px;">
+                    <br>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-120-annual" name="commit" type="button" value="300 API requests per minute + realtime US market data + end-of-day options data: $1499/year" style="width:900px;">
+                    <br>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-360-annual" name="commit" type="button" value="600 API requests per minute + realtime US market data + realtime options data: $1999/year" style="width:900px;">
+                    <br>
+                    <input class="btn btn-default btn-lg btn-pricing" id="pricing-600-annual" name="commit" type="button" value="1200 API requests per minute + realtime US market data + realtime options data: $2499/year" style="width:900px;">
+                    <br>
+                    <p class="form-label">Email:</p>
+                    <input class="premium-field" id="email" type="text">
+                    <br>
+                    <br>
+                    <div id="message-container">
+                        <p>❚ No daily limits. </p>
+                        <p>❚ All other premium features unlocked. </p>
+                        <p>❚ Cancel anytime - no questions asked. </p>
+                        <p>❚ No hidden costs. No surprise overage charges. </p>
+                    </div>
+                    <br>
+                    <br>
+                    <p class="form-label">Credit/Debit Card Number: <a style="margin-left: 110px; position: absolute" href="https://safeweb.norton.com/report/show?url=www.alphavantage.co" target="_blank"><img src="/static/img/norton.png"></a></p>
+                    <p><img src="/static/img/supported-payments.png" alt="supported payment methods" /></p>
+                    <input class="premium-field" id="credit_card_number" type="text">
+                    <p class="form-label">Security Code (CVC):</p>
+                    <input class="premium-field" id="cvv" type="text">
+                    <p class="form-label">Expiration Date:</p>
+                    <div class="input">
+                        <select class="small" id="expiry_month">
+                        
+                            <option value="1">1</option>
+                        
+                            <option value="2">2</option>
+                        
+                            <option value="3">3</option>
+                        
+                            <option value="4">4</option>
+                        
+                            <option value="5">5</option>
+                        
+                            <option value="6">6</option>
+                        
+                            <option value="7">7</option>
+                        
+                            <option value="8">8</option>
+                        
+                            <option value="9">9</option>
+                        
+                            <option value="10" selected>10</option>
+                        
+                            <option value="11">11</option>
+                        
+                            <option value="12">12</option>
+                        
+                        </select>
+                        <select class="small" id="expiry_year">
+                        
+                            <option value="2011">2011</option>
+                        
+                            <option value="2012">2012</option>
+                        
+                            <option value="2013">2013</option>
+                        
+                            <option value="2014">2014</option>
+                        
+                            <option value="2015">2015</option>
+                        
+                            <option value="2016">2016</option>
+                        
+                            <option value="2017">2017</option>
+                        
+                            <option value="2018">2018</option>
+                        
+                            <option value="2019">2019</option>
+                        
+                            <option value="2020">2020</option>
+                        
+                            <option value="2021">2021</option>
+                        
+                            <option value="2022">2022</option>
+                        
+                            <option value="2023">2023</option>
+                        
+                            <option value="2024">2024</option>
+                        
+                            <option value="2025">2025</option>
+                        
+                            <option value="2026" selected>2026</option>
+                        
+                            <option value="2027">2027</option>
+                        
+                            <option value="2028">2028</option>
+                        
+                            <option value="2029">2029</option>
+                        
+                            <option value="2030">2030</option>
+                        
+                            <option value="2031">2031</option>
+                        
+                            <option value="2032">2032</option>
+                        
+                            <option value="2033">2033</option>
+                        
+                            <option value="2034">2034</option>
+                        
+                            <option value="2035">2035</option>
+                        
+                        </select>
+                    </div>
+                    <!--<p class="form-field"></p>-->
+                    <br/>
+                    <div class="actions">
+                        <input class="btn btn-default btn-lg" id="user_submit" name="commit" type="submit" style="margin-right: 10px" value="🔒 Get Premium API Key" >
+                        <div id="results"></div>
+                        <br>
+                        <br>
+                        <p>Upon payment completion, <u>please stay on this page</u> to view the entitlement instructions for realtime and 15-minute delayed US market data as well as realtime US options data via our Alpha X Terminal &copy; display portal.</p>
+                        <p>Need even more API requests per minute than the plans listed here? We support up to an unlimited number of requests per minute - please <a href="/cdn-cgi/l/email-protection#3b484e4b4b54494f7b5a574b535a4d5a554f5a5c5e155854" target="_blank">contact us</a> for details.</p>
+                    </div>
+                    <br>
+                    <!--<br>-->
+                    <!--<p><img style="max-width: 100%; height: auto;" src="/static/img/testimonials.jpg"></p>-->
+                </form>
+
+
+
+        </section>
+
+        <section id="3">
+            <h2 id="confirmation">You have subscribed to a premium API key. </h2>
+            <p id="confirmationp1" style="font-size:120%;"></p>
+            <br/>
+            <p>[IMPORTANT NOTE #1 - PLEASE DO NOT SKIP]: If you would like to access realtime US market data, 15-minute delayed US market data, realtime US options data, or historical index data for personal use, please log into your <a href="https://www.alphavantage.co/alphax/" target="_blank">Alpha X Terminal</a> (or sign up for free if you are a first-time user) and click on the "Data" link at the upper-right corner to start the data entitlement process - please see illustration below.</p>
+            <p><img style="width:60%;" src="/static/img/alphax_data.png"></p>
+            <br>
+            <p id="confirmationp2">[IMPORTANT NOTE #2 - PLEASE DO NOT SKIP]: If you are already using our <a href="https://mcp.alphavantage.co/" target="_blank">official Alpha Vantage MCP server</a> in your chatbot/coding/agentic AI tools, please make sure to add your new premium API key to the MCP server (you can simply disconnect then reconnect the MCP server - <a href="https://www.youtube.com/watch?v=R36OcQXUNhM" target="_blank">here is a short video tutorial</a> for Claude AI). Last but not least, you now have access to premium support at <a href="/cdn-cgi/l/email-protection#52212722223d202612333e223a3324333c263335377c313d" target="_blank"><span class="__cf_email__" data-cfemail="45363035352a3731052429352d2433242b312422206b262a">[email&#160;protected]</span></a>. Please keep your API key at a safe physical or digital place. If you suspect that your API key has been "compromised" at any point, please <a href="/cdn-cgi/l/email-protection#24575154544b5650644548544c4552454a504543410a474b">let us know</a> and we will take actions accordingly.</p>
+        </section>
+
+      </article>
+      <!-- END Main content -->
+    </main>
+
+
+    <!-- Footer -->
+    <footer class="site-footer">
+      <div class="container-fluid">
+        <a id="scroll-up" href="#"><i class="fa fa-angle-up"></i></a>
+
+        <div class="row">
+          <div class="col-md-6 col-sm-6">
+            <p>Copyright &copy; Alpha Vantage Inc. 2017-2026</p>
+          </div>
+          <div class="col-md-6 col-sm-6">
+            <ul class="footer-menu">
+              <li><a href="https://www.alphavantage.co/terms_of_service/" target="_blank">Terms of Service</a></li>
+              <li><a href="https://www.alphavantage.co/privacy/" target="_blank">Privacy Policy</a></li>
+              <li><a href="/cdn-cgi/l/email-protection#ed9e989d9d829f99ad8c819d858c9b8c83998c8a88c38e82">Contact us</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </footer>
+    <!-- END Footer -->
+
+    <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="/static/scripts/theDocs.all.min.js" type="text/javascript"></script>
+
+
+
+  </body>
+</html>
