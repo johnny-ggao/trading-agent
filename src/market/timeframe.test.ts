@@ -24,3 +24,13 @@ describe("周期解析（显式周期或时间词）", () => {
     expect(isInterval("2h")).toBe(false);
   });
 });
+
+describe("1w 作为可显式请求的周期", () => {
+  it("原样返回 1w", () => {
+    expect(resolveInterval("1w")).toBe("1w");
+  });
+
+  it("时间词「长线」仍映射到 1d（1w 不抢它的位置）", () => {
+    expect(resolveInterval("长线")).toBe("1d");
+  });
+});

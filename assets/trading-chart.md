@@ -23,6 +23,7 @@
 | `bollinger` | 叠加布林带 | `true` |
 | `kdj` | KDJ 副图 | `true` |
 | `atr` | ATR 副图 | `true` |
+| `compareTo` | 要与当前周期比较方向的另一周期 | `"1w"`（日线对周线）、`"1h"`（15m 对 1h）；不传则不比较 |
 
 ## 时间词 → 主周期
 
@@ -89,7 +90,7 @@
 
 ### 调用顺序
 
-1. `trading_chart`——出图 + 锚点（先有 symbol 与周期，后面的请求都建立在它上面）；
+1. `trading_chart`——出图 + 锚点（先有 symbol 与周期，后面的请求都建立在它上面）。需要多周期共振时**在同一调用里传 `compareTo`** 指定要对比的周期；
 2. `trading_indicator`——要指标值。可指定周期与参数，**可以再发一轮**接着看别的；
 3. `trading_levels`——要支撑/阻力/斐波那契/枢轴，容差与条数由你定；
 4. `trading_confidence`——形成方向性结论后校准置信度；
@@ -120,6 +121,16 @@
 ### 价位请求怎么写
 
 `trading_levels` 的 `kinds` 可选 `support` / `resistance` / `fib` / `pivots`；`tolerancePct`（默认 1）越小簇越细，`maxLevels` 按触碰次数降序截断。需要"最硬的几条"就调小 `maxLevels`，需要"完整的簇结构"就别传它。每条价位带 `touches`（触碰次数，越多越硬）、`distancePct`（距现价）与 `pivotTimes`（形成它的枢轴时间）。
+
+### 多周期共振：周期对由你定
+
+高周期定结构与方向、当前周期定时机——但**该拿哪个周期比，取决于问题**：
+
+- 看日线走势 → `trading_chart({ symbol, timeframe: "1d", compareTo: "1w" })`；
+- 看 15m 入场 → `compareTo: "1h"`；
+- 想确认中期结构 → 甚至可以跨两级，例如 15m 对 4h。
+
+返回 `current` / `higher` 两侧的机械状态（趋势状态、方向、ADX）、`aligned`（是否同向）与 `summary`。**同向是共振，反向是背离**；任一侧走平则"方向不明确"，此时不要把共振当作证据。周期对不写死——你按问题选，选完在回答里说明用了哪两个周期。
 
 ### 数据不足怎么办
 

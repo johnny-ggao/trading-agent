@@ -1,4 +1,4 @@
-export const SUPPORTED_INTERVALS = ["15m", "1h", "4h", "1d"] as const;
+export const SUPPORTED_INTERVALS = ["15m", "1h", "4h", "1d", "1w"] as const;
 export type Interval = (typeof SUPPORTED_INTERVALS)[number];
 
 /** 未指定时使用的主周期（15m 只作为显式短线选择）。 */

@@ -156,3 +156,24 @@ describe("skill v3：按需取数的引导词", () => {
     expect(body).toContain("Markdown 表格");
   });
 });
+
+describe("skill v3：多周期共振的周期对由模型指定", () => {
+  const body = tradingChartSkill.content;
+
+  it("点名 compareTo 参数与用法", () => {
+    expect(body).toContain("compareTo");
+    expect(body).toContain('"1w"');
+    expect(body).toContain('"1h"');
+  });
+
+  it("说明周期对不写死、由问题决定，并可跨两级", () => {
+    expect(body).toContain("周期对由你定");
+    expect(body).toContain("不写死");
+    expect(body).toContain("跨两级");
+  });
+
+  it("说明 aligned 的语义与走平时不要当证据", () => {
+    expect(body).toContain("aligned");
+    expect(body).toContain("方向不明确");
+  });
+});

@@ -8,8 +8,11 @@
 import { barsForInterval, intervalToMs } from "./chart";
 import { partitionCandles } from "./closedCandles";
 import { computeIndicatorFacts, warmupBarsFor, type IndicatorFact, type IndicatorSelector } from "./indicatorFacts";
+import { DEFAULT_INDICATORS } from "./indicators";
 import { computeLevelFacts, type LevelFact, type LevelKind, type LevelPivot } from "./levelFacts";
-import { resolveInterval } from "./timeframe";
+import { computeMarketContext } from "./context";
+import { computeResonance, higherInterval } from "./multiTimeframe";
+import { resolveInterval, type Interval } from "./timeframe";
 import { resolveSymbol } from "./symbol";
 import type { MarketDataProvider } from "./types";
 
@@ -48,6 +51,9 @@ export type IndicatorFactsResponse = IndicatorFactsResult | Insufficient;
 
 /** 分形枢轴要左右各 left/right 根，少于这个数不可能有枢轴。 */
 const MIN_BARS_FOR_PIVOTS = 5;
+
+/** 市场状态（ADX/ATR/量能）至少要这么多根才有意义。 */
+const MIN_BARS_FOR_CONTEXT = 15;
 
 interface ClockOptions {
   now?: number;
@@ -165,6 +171,88 @@ export async function requestLevelFacts(
     levels: facts.levels,
     counts: facts.counts,
     truncated: facts.truncated,
+  };
+}
+
+export interface ResonanceInput {
+  symbol: string;
+  /** 当前（较低）周期。 */
+  interval?: string;
+  /** 要对比的（较高）周期；缺省取默认高一级周期。 */
+  compareTo?: string;
+}
+
+export interface ResonanceResult {
+  ok: true;
+  symbol: string;
+  currentInterval: string;
+  higherInterval: string;
+  /** 当前周期的机械状态。 */
+  current: { trend: { state: string; direction: string; adx: number | null } };
+  /** 对比周期的机械状态。 */
+  higher: { trend: { state: string; direction: string; adx: number | null } };
+  aligned: boolean;
+  summary: string;
+  /** 以**当前周期**的收盘边界为准（高周期那侧各自也已切过）。 */
+  grounding: Grounding;
+}
+
+export type ResonanceResponse = ResonanceResult | Insufficient;
+
+/**
+ * 多周期共振：**周期对由调用方指定**，不写死 ×4。
+ *
+ * 看 1d 的人可能要对 1w，看 15m 的人可能要对 1h，做结构的人可能跨两级对比——
+ * 默认仍取高一级周期，但 `compareTo` 可覆盖为任意支持的周期。
+ */
+export async function requestResonance(
+  provider: MarketDataProvider,
+  input: ResonanceInput,
+  options: ClockOptions = {},
+): Promise<ResonanceResponse> {
+  const currentInterval = resolveInterval(input.interval);
+  const higher = input.compareTo === undefined
+    ? higherInterval(currentInterval) as Interval
+    : resolveInterval(input.compareTo);
+
+  const [currentSeries, higherSeries] = await Promise.all([
+    closedSeries(provider, input.symbol, currentInterval, options),
+    closedSeries(provider, input.symbol, higher, options),
+  ]);
+
+  // 两侧都要够算市场状态（ADX 等），否则明确报缺而不是给一个空结论。
+  for (const series of [currentSeries, higherSeries]) {
+    if (series.candles.length < MIN_BARS_FOR_CONTEXT) {
+      return {
+        ok: false,
+        reason: "insufficient_closed_bars",
+        required: MIN_BARS_FOR_CONTEXT,
+        available: series.candles.length,
+        hint: `${series.interval} 的已收盘 K 线不足以计算市场状态（需要 ${MIN_BARS_FOR_CONTEXT} 根）；改用更小的周期或更短的指标参数。`,
+      };
+    }
+  }
+
+  const currentContext = computeMarketContext(currentSeries.candles, DEFAULT_INDICATORS);
+  const higherContext = computeMarketContext(higherSeries.candles, DEFAULT_INDICATORS);
+  const resonance = computeResonance(higher, higherContext, currentContext);
+  const trendOf = (context: typeof currentContext) => ({
+    trend: {
+      state: context.trend.state,
+      direction: context.trend.direction,
+      adx: context.trend.adx,
+    },
+  });
+  return {
+    ok: true,
+    symbol: currentSeries.symbol,
+    currentInterval,
+    higherInterval: higher,
+    current: trendOf(currentContext),
+    higher: trendOf(higherContext),
+    aligned: resonance.aligned,
+    summary: resonance.summary,
+    grounding: currentSeries.grounding,
   };
 }
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { requestIndicatorFacts, requestLevelFacts } from "./facts";
+import { requestIndicatorFacts, requestLevelFacts, requestResonance } from "./facts";
 import type { Candle } from "../shared/chartSpec";
 import type { MarketDataProvider } from "./types";
 
@@ -76,5 +76,56 @@ describe("requestLevelFacts：工具层形状", () => {
     if (result.ok !== false) throw new Error("expected failure");
     expect(result.required).toBeGreaterThan(3);
     expect(result.available).toBe(3);
+  });
+});
+
+describe("requestResonance：周期对由调用方指定", () => {
+  /** 两个周期各自的 K 线：1d 陡升、1w 平盘，用来区分方向。 */
+  const dailyUp: Candle[] = Array.from({ length: 60 }, (_, i) => ({
+    time: i * 86_400, open: 100 + i, high: 101 + i, low: 99 + i, close: 100 + i, volume: 1,
+  }));
+  const weeklyFlat: Candle[] = Array.from({ length: 60 }, (_, i) => ({
+    time: i * 604_800, open: 100 + (i % 2), high: 101 + (i % 2), low: 99, close: 100 + (i % 2), volume: 1,
+  }));
+  const byInterval: MarketDataProvider = {
+    fetchCandles: async (_symbol, interval) => (interval === "1d" ? dailyUp : weeklyFlat),
+    fetchDerivatives: async (symbol) => ({ symbol }),
+  };
+
+  it("按指定周期对比较，并回 grounding", async () => {
+    const result = await requestResonance(byInterval, { symbol: "BTC", interval: "1d", compareTo: "1w" }, { now: 70 * 86_400 * 1000 });
+    expect(result.ok).toBe(true);
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.higherInterval).toBe("1w");
+    expect(result.currentInterval).toBe("1d");
+    expect(result.grounding.closedOnly).toBe(true);
+    expect(typeof result.summary).toBe("string");
+  });
+
+  it("不指定 compareTo 时按默认高一级周期（1d → 1w）", async () => {
+    const result = await requestResonance(byInterval, { symbol: "BTC", interval: "1d" }, { now: 70 * 86_400 * 1000 });
+    expect(result.ok).toBe(true);
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.higherInterval).toBe("1w");
+  });
+
+  it("周期对拉得很远（15m 对 1w）也不报错", async () => {
+    const result = await requestResonance(byInterval, { symbol: "BTC", interval: "15m", compareTo: "1w" }, { now: 70 * 604_800 * 1000 });
+    expect(result.ok).toBe(true);
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.currentInterval).toBe("15m");
+    expect(result.higherInterval).toBe("1w");
+  });
+
+  it("高周期数据不足时明确报缺", async () => {
+    const thin: MarketDataProvider = {
+      fetchCandles: async (_symbol, interval) => (interval === "1w" ? dailyUp.slice(0, 2) : dailyUp),
+      fetchDerivatives: async (symbol) => ({ symbol }),
+    };
+    const result = await requestResonance(thin, { symbol: "BTC", interval: "1d", compareTo: "1w" }, { now: 70 * 86_400 * 1000 });
+    expect(result.ok).toBe(false);
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.required).toBeGreaterThan(2);
+    expect(result.available).toBe(2);
   });
 });

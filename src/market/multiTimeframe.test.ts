@@ -39,3 +39,27 @@ describe("computeResonance", () => {
     expect(resonance.summary).toContain("方向不明确");
   });
 });
+
+describe("任意周期对（不再写死 ×4）", () => {
+  it("1d 的高一级是 1w（周线比较需要它）", () => {
+    expect(higherInterval("1d")).toBe("1w");
+  });
+
+  it("1w 没有更高一级，返回自己", () => {
+    expect(higherInterval("1w")).toBe("1w");
+  });
+
+  it("computeResonance 接受任意两个周期标签（1d 对 1w）", () => {
+    const weekly = computeResonance("1w", context("up"), context("up"));
+    expect(weekly.higherInterval).toBe("1w");
+    expect(weekly.aligned).toBe(true);
+    expect(weekly.summary).toContain("共振向上");
+  });
+
+  it("跨两级也可比（15m 对 4h），背离照常报出", () => {
+    const wide = computeResonance("4h", context("up"), context("down"));
+    expect(wide.higherInterval).toBe("4h");
+    expect(wide.aligned).toBe(false);
+    expect(wide.summary).toContain("周期背离");
+  });
+});

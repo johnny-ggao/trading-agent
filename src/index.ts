@@ -13,7 +13,7 @@ import {
 } from "./analysis/typesafe";
 import { describeIndicators } from "./market/intent";
 import { buildAnchor } from "./market/anchor";
-import { requestIndicatorFacts, requestLevelFacts } from "./market/facts";
+import { requestIndicatorFacts, requestLevelFacts, requestResonance } from "./market/facts";
 import type { LevelKind } from "./market/levelFacts";
 import { parseIndicatorSelectors } from "./market/indicatorSpec";
 import { buildMarketView, chartRequestFromQuery, loadChart, type MarketView } from "./market/request";
@@ -187,6 +187,8 @@ export function apply(ctx: HostContext, config: Config): void {
         + "RSI 默认关闭（传 rsi 周期即显示），布林带/KDJ/ATR 也按需开启。"
         + "返回的机械数据只用已收盘 K 线算出，形成中（未收盘）的那根不参与任何信号与判断，"
         + "画面上它会以弱化样式区分。只做技术面判读，不构成投资建议。"
+        + "需要与别的周期比较方向时，传 compareTo 指定要对比的周期（例如日线对周线传 \"1w\"，"
+        + "15m 对 1h 传 \"1h\"）——周期对由你决定，不写死。"
         + "出图后如需校准置信度，再调用 trading_confidence。",
       parameters: {
         symbol: { type: "string", description: "交易对或币种，例如 BTC 或 BTCUSDT。" },
@@ -196,6 +198,11 @@ export function apply(ctx: HostContext, config: Config): void {
         bollinger: { type: "boolean", description: "是否叠加布林带（默认关闭）。" },
         kdj: { type: "boolean", description: "是否显示 KDJ 副图（默认关闭）。" },
         atr: { type: "boolean", description: "是否显示 ATR 副图（默认关闭）。" },
+        compareTo: {
+          type: "string",
+          description: "要与当前周期比较方向的另一周期（15m/1h/4h/1d/1w）；不传则不比较。"
+            + "看日线要对周线就传 1w，看 15m 要对 1h 就传 1h。",
+        },
       },
       output: {
         schema: {
@@ -209,6 +216,7 @@ export function apply(ctx: HostContext, config: Config): void {
             lastClose: { type: "number", required: true },
             lastClosedBar: { type: "number" },
             context: { type: "json", required: true },
+            resonance: { type: "json" },
             hint: { type: "string", required: true },
             chartSpec: { type: "json", required: true },
           },
@@ -223,6 +231,12 @@ export function apply(ctx: HostContext, config: Config): void {
             type: "text",
             text: `市场状态（机械事实，非结论）：${JSON.stringify(value.context)}`,
           },
+          ...(value.resonance === undefined
+            ? []
+            : [{
+              type: "text" as const,
+              text: `周期比较（机械事实）：${JSON.stringify(value.resonance)}`,
+            }]),
           { type: "text", text: String(value.hint) },
         ],
         presentationMeta: (_args, value) => value.chartSpec,
@@ -243,6 +257,15 @@ export function apply(ctx: HostContext, config: Config): void {
           at: Date.now(),
         });
         const anchor = buildAnchor(view);
+        // 周期对由模型点名（compareTo）；不传就不比较。
+        const compareTo = (args.compareTo ?? "").trim();
+        const resonance = compareTo === ""
+          ? undefined
+          : await requestResonance(provider, {
+            symbol: view.spec.symbol,
+            interval: view.spec.interval,
+            compareTo,
+          });
         return {
           symbol: anchor.symbol,
           interval: anchor.interval,
@@ -251,6 +274,7 @@ export function apply(ctx: HostContext, config: Config): void {
           lastClose: anchor.lastClose,
           ...(anchor.lastClosedBar === undefined ? {} : { lastClosedBar: anchor.lastClosedBar }),
           context: anchor.context as unknown as Json,
+          ...(resonance === undefined ? {} : { resonance: resonance as unknown as Json }),
           hint: anchor.hint,
           chartSpec: view.spec as unknown as Json,
         };
