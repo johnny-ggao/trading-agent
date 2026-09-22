@@ -4,11 +4,7 @@
 .DESCRIPTION
   无论本机是否装过 Node / pnpm / DSH，都把缺失的组件装到
   $env:USERPROFILE\.dsh-trading-agent 下自用（不改系统安装），
-  再把插件加入目标 profile 并启动 DSH。
-.EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\start.ps1
-.EXAMPLE
-  powershell -ExecutionPolicy Bypass -File .\start.ps1 -Profile desktop -NoStart
+  再把插件加入目标 profile 并启动 DSH。安装过程显示进度并把日志实时输出、留存到 logs\。
 #>
 #Requires -Version 5.1
 [CmdletBinding()]
@@ -23,16 +19,44 @@ param(
   [switch]${Help}
 )
 
-$ErrorActionPreference = "Stop"
+${ErrorActionPreference} = "Stop"
 ${ScriptDir} = Split-Path -Parent ${MyInvocation}.MyCommand.Path
 ${NodeVersion} = if ($env:NODE_VERSION) { $env:NODE_VERSION } else { "v22.20.0" }
 ${DshVersion} = if ($env:DSH_VERSION) { $env:DSH_VERSION } else { "0.1.6-alpha.2" }
 ${PnpmVersion} = if ($env:PNPM_VERSION) { $env:PNPM_VERSION } else { "11" }
 ${ForceLocalNode} = ($env:FORCE_LOCAL_NODE -eq "1")
+${LogDir} = Join-Path ${Home} "logs"
+${Total} = 4
+${script:Phase} = 0
+if (${ToolchainOnly}) { ${Total} = 3 }
 
 function Say([string]${msg})  { Write-Host "==> ${msg}" -ForegroundColor Cyan }
 function Warn([string]${msg}) { Write-Host "[warn] ${msg}" -ForegroundColor Yellow }
 function Die([string]${msg})  { Write-Host "[error] ${msg}" -ForegroundColor Red; exit 1 }
+
+function Step([string]${label}) {
+  ${script:Phase} = ${script:Phase} + 1
+  Write-Host ""
+  Write-Host ("==> [{0}/{1}] {2}" -f ${script:Phase}, ${Total}, ${label}) -ForegroundColor Cyan
+}
+
+function Run-Step([string]${label}, [string]${logfile}, [scriptblock]${action}) {
+  Step ${label}
+  if (${DryRun}) { Write-Host "    [dry-run] ${label}"; return }
+  New-Item -ItemType Directory -Force -Path (Split-Path -Parent ${logfile}) | Out-Null
+  Write-Host "    日志：${logfile}"
+  ${start} = Get-Date
+  & ${action} 2>&1 | Tee-Object -FilePath ${logfile}
+  ${code} = ${LASTEXITCODE}
+  ${secs} = [int]((Get-Date) - ${start}).TotalSeconds
+  if (${code} -eq 0) {
+    Write-Host "    ✓ 完成（${secs}s）" -ForegroundColor Green
+  } else {
+    Write-Host "    ✗ 失败（${secs}s），最后 30 行：" -ForegroundColor Red
+    Get-Content ${logfile} -Tail 30
+    exit 1
+  }
+}
 
 if (${Help}) {
   @"
@@ -51,6 +75,8 @@ dsh-trading-agent 一键启动（Windows）
   -Help             显示本帮助
 
 环境变量：NODE_VERSION DSH_VERSION PNPM_VERSION FORCE_LOCAL_NODE=1
+
+安装过程会显示进度（下载有进度条）并把每一步日志实时输出，同时保存到 <Home>\logs\。
 "@ | Write-Host
   exit 0
 }
@@ -64,69 +90,62 @@ function Download([string]${url}, [string]${dest}) {
     Invoke-WebRequest -Uri ${url} -OutFile ${dest} -UseBasicParsing
   } catch {
     if (Get-Command curl.exe -ErrorAction SilentlyContinue) {
-      & curl.exe -fsSL -o ${dest} ${url}
+      & curl.exe -fL --retry 3 --progress-bar -o ${dest} ${url}
       if (${LASTEXITCODE} -ne 0) { throw "curl failed" }
     } else { throw }
   }
 }
 
 function Ensure-Node {
+  Step "准备 Node（需要时自动下载安装）"
   ${node} = Get-Command node -ErrorAction SilentlyContinue
   ${npm} = Get-Command npm -ErrorAction SilentlyContinue
   if ((-not ${ForceLocalNode}) -and ${node} -and ${npm}) {
-    if ((Get-NodeMajor) -ge 20) { Say "使用系统 Node $(& node -v)"; return }
+    if ((Get-NodeMajor) -ge 20) { Write-Host "    使用系统 Node $(& node -v)"; return }
     Warn "系统 Node 版本过低（$(& node -v)），改装本地 Node ${NodeVersion}"
   } else {
-    Say "未检测到可用的 Node，准备安装本地 Node ${NodeVersion}"
+    Write-Host "    未检测到可用的 Node，准备安装本地 Node ${NodeVersion}"
   }
-  if (${DryRun}) { Say "[dry-run] 下载并解压 Node ${NodeVersion} 到 ${Home}\toolchain"; return }
   ${arch} = if ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") { "arm64" } else { "x64" }
   ${toolchain} = Join-Path ${Home} "toolchain"
   ${nodeDir} = Join-Path ${toolchain} ("node-" + ${NodeVersion} + "-win-" + ${arch})
+  ${zip} = Join-Path ${toolchain} ("node-" + ${NodeVersion} + "-win-" + ${arch} + ".zip")
+  ${url} = "https://nodejs.org/dist/${NodeVersion}/node-${NodeVersion}-win-${arch}.zip"
+  if (${DryRun}) { Write-Host "    [dry-run] 下载 ${url}"; return }
   New-Item -ItemType Directory -Force -Path ${toolchain} | Out-Null
   if (-not (Test-Path (Join-Path ${nodeDir} "node.exe"))) {
-    ${zip} = Join-Path ${toolchain} ("node-" + ${NodeVersion} + "-win-" + ${arch} + ".zip")
-    ${url} = "https://nodejs.org/dist/${NodeVersion}/node-${NodeVersion}-win-${arch}.zip"
-    Say "下载 ${url}"
+    Write-Host "    下载 ${url}"
     Download ${url} ${zip}
+    Write-Host "    解压到 ${toolchain}"
     Expand-Archive -Path ${zip} -DestinationPath ${toolchain} -Force
     Remove-Item ${zip} -Force
   }
   if (-not (Test-Path (Join-Path ${nodeDir} "node.exe"))) { Die "未找到 node.exe：${nodeDir}" }
   $env:Path = "${nodeDir};$env:Path"
-  Say "本地 Node：$(& node -v)"
+  Write-Host "    本地 Node：$(& node -v)"
 }
 
 function Ensure-Pnpm {
-  if (Get-Command pnpm -ErrorAction SilentlyContinue) { Say "使用系统 pnpm $(& pnpm --version)"; return }
-  if (${DryRun}) { Say "[dry-run] 在 ${Home}\pnpm 安装 pnpm@${PnpmVersion}"; return }
-  Say "未检测到 pnpm，安装到 ${Home}\pnpm（pnpm@${PnpmVersion}）"
+  if (Get-Command pnpm -ErrorAction SilentlyContinue) { Step "准备 pnpm"; Write-Host "    使用系统 pnpm $(& pnpm --version)"; return }
   ${prefix} = Join-Path ${Home} "pnpm"
-  ${log} = Join-Path ${Home} "pnpm-install.log"
-  New-Item -ItemType Directory -Force -Path ${prefix} | Out-Null
-  & npm install --prefix ${prefix} --no-audit --no-fund ("pnpm@" + ${PnpmVersion}) *> ${log}
-  if (${LASTEXITCODE} -ne 0) { Get-Content ${log} -Tail 40; Die "pnpm 安装失败（详见 ${log}）" }
+  ${sb} = { & npm install --prefix ${prefix} --no-audit --no-fund --loglevel=http "pnpm@${PnpmVersion}" }.GetNewClosure()
+  Run-Step "安装 pnpm@${PnpmVersion}" (Join-Path ${LogDir} "pnpm-install.log") ${sb}
   $env:Path = "${prefix}\node_modules\.bin;$env:Path"
-  Say "本地 pnpm：$(& pnpm --version)"
+  Write-Host "    本地 pnpm：$(& pnpm --version)"
 }
 
 function Ensure-Dsh {
   ${dsh} = Get-Command dsh -ErrorAction SilentlyContinue
   if (${dsh}) {
-    ${v} = (& dsh --version 2>$null | Select-Object -Last 1)
-    if ("${v}" -like "0.1.6*") { Say "使用系统 dsh ${v}"; return }
+    ${v} = (& dsh --version 2>${null} | Select-Object -Last 1)
+    if ("${v}" -like "0.1.6*") { Step "准备 DSH"; Write-Host "    使用系统 dsh ${v}"; return }
     Warn "系统 dsh 版本 ${v} 与所需 ${DshVersion} 不一致，改装本地 dsh"
-  } else {
-    Say "未检测到 dsh，安装到 ${Home}\dsh（@deepseek-ai/dsh@${DshVersion}）"
   }
-  if (${DryRun}) { Say "[dry-run] 在 ${Home}\dsh 安装 @deepseek-ai/dsh@${DshVersion}"; return }
   ${prefix} = Join-Path ${Home} "dsh"
-  ${log} = Join-Path ${Home} "dsh-install.log"
-  New-Item -ItemType Directory -Force -Path ${prefix} | Out-Null
-  & npm install --prefix ${prefix} --no-audit --no-fund ("@deepseek-ai/dsh@" + ${DshVersion}) *> ${log}
-  if (${LASTEXITCODE} -ne 0) { Get-Content ${log} -Tail 40; Die "dsh 安装失败（详见 ${log}）" }
+  ${sb} = { & npm install --prefix ${prefix} --no-audit --no-fund --loglevel=http "@deepseek-ai/dsh@${DshVersion}" }.GetNewClosure()
+  Run-Step "安装 @deepseek-ai/dsh@${DshVersion}" (Join-Path ${LogDir} "dsh-install.log") ${sb}
   $env:Path = "${prefix}\node_modules\.bin;$env:Path"
-  Say "本地 dsh：$(& dsh --version | Select-Object -Last 1)"
+  Write-Host "    本地 dsh：$(& dsh --version | Select-Object -Last 1)"
 }
 
 function Resolve-Spec {
@@ -140,12 +159,8 @@ function Resolve-Spec {
 
 function Install-Plugin {
   ${spec} = Resolve-Spec
-  Say "把插件加入 profile「${Profile}」：${spec}"
-  if (${DryRun}) { Say "[dry-run] dsh plugin --profile ${Profile} add ${spec}"; return }
-  & dsh plugin --profile ${Profile} add ${spec}
-  if (${LASTEXITCODE} -ne 0) {
-    Die ("插件安装失败。若提示缺少 allowBuilds，把 dsh-trading-agent 写进 " + $env:USERPROFILE + "\.dsh\profiles\" + ${Profile} + "\pnpm-workspace.yaml 后重跑；或改用与脚本同目录的预构建 .tgz。")
-  }
+  ${sb} = { & dsh plugin --profile ${Profile} add ${spec} }.GetNewClosure()
+  Run-Step "安装插件到 profile「${Profile}」：${spec}" (Join-Path ${LogDir} "plugin-add.log") ${sb}
 }
 
 function Start-Dsh {
@@ -156,6 +171,7 @@ function Start-Dsh {
 }
 
 Say "dsh-trading-agent 一键启动（Windows，AGENT_HOME=${Home}）"
+Say "安装日志目录：${LogDir}"
 Ensure-Node
 Ensure-Pnpm
 Ensure-Dsh

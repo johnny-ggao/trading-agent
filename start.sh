@@ -18,14 +18,19 @@ NODE_VERSION="${NODE_VERSION:-v22.20.0}"
 DSH_VERSION="${DSH_VERSION:-0.1.6-alpha.2}"
 PNPM_VERSION="${PNPM_VERSION:-11}"
 FORCE_LOCAL_NODE="${FORCE_LOCAL_NODE:-0}"
+LOG_DIR="${AGENT_HOME}/logs"
 START=1
 OPEN=1
 TOOLCHAIN_ONLY=0
 DRY_RUN=0
+PHASE=0
+TOTAL=4
 
 say()  { printf '%s\n' "==> $*"; }
 warn() { printf '%s\n' "[warn] $*" >&2; }
 die()  { printf '%s\n' "[error] $*" >&2; exit 1; }
+
+step() { PHASE=$((PHASE + 1)); printf '\n==> [%s/%s] %s\n' "${PHASE}" "${TOTAL}" "${1}"; }
 
 usage() {
   cat <<'USAGE'
@@ -43,6 +48,8 @@ dsh-trading-agent 一键启动
   -h, --help         显示本帮助
 
 环境变量：PROFILE PLUGIN_SPEC AGENT_HOME NODE_VERSION DSH_VERSION PNPM_VERSION FORCE_LOCAL_NODE=1
+
+安装过程会显示进度（下载有进度条）并把每一步日志实时输出，同时保存到 <AGENT_HOME>/logs/。
 USAGE
 }
 
@@ -50,7 +57,7 @@ while [ "$#" -gt 0 ]; do
   case "${1}" in
     --profile) PROFILE="${2}"; shift 2 ;;
     --spec) PLUGIN_SPEC="${2}"; shift 2 ;;
-    --home) AGENT_HOME="${2}"; shift 2 ;;
+    --home) AGENT_HOME="${2}"; LOG_DIR="${AGENT_HOME}/logs"; shift 2 ;;
     --no-start) START=0; shift ;;
     --no-open) OPEN=0; shift ;;
     --toolchain-only) TOOLCHAIN_ONLY=1; shift ;;
@@ -59,13 +66,15 @@ while [ "$#" -gt 0 ]; do
     *) die "未知参数：${1}（用 --help 查看用法）" ;;
   esac
 done
+if [ "${TOOLCHAIN_ONLY}" = "1" ]; then TOTAL=3; fi
+mkdir -p "${LOG_DIR}"
 
 OS_RAW="$(uname -s)"
 ARCH_RAW="$(uname -m)"
 case "${OS_RAW}" in
   Darwin) NODE_OS="darwin" ;;
   Linux)  NODE_OS="linux" ;;
-  *) die "暂只支持 macOS 与 Linux（当前 ${OS_RAW}）。Windows 请在 WSL 或 Git Bash 下运行。" ;;
+  *) die "暂只支持 macOS 与 Linux（当前 ${OS_RAW}）。Windows 请用 start.ps1。" ;;
 esac
 case "${ARCH_RAW}" in
   arm64|aarch64) NODE_ARCH="arm64" ;;
@@ -73,77 +82,94 @@ case "${ARCH_RAW}" in
   *) die "暂不支持的 CPU 架构：${ARCH_RAW}" ;;
 esac
 
+# 下载：带进度条；curl 优先，退回 wget。
 download() {
   if command -v curl >/dev/null 2>&1; then
-    curl -fsSL --retry 3 -o "${2}" "${1}"
+    curl -fL --retry 3 --progress-bar -o "${2}" "${1}"
   elif command -v wget >/dev/null 2>&1; then
-    wget -q -O "${2}" "${1}"
+    wget --progress=bar:force --tries=3 -O "${2}" "${1}"
   else
     die "需要 curl 或 wget 之一来下载依赖。"
+  fi
+}
+
+# 运行一步：输出实时镜像到终端并写入日志；失败时打印日志末尾。
+run_step() {
+  label="${1}"; logfile="${2}"; shift 2
+  step "${label}"
+  if [ "${DRY_RUN}" = "1" ]; then printf '    [dry-run] %s\n' "$*"; return 0; fi
+  printf '    日志：%s\n' "${logfile}"
+  start=${SECONDS}
+  set +e
+  "$@" 2>&1 | tee "${logfile}"
+  status=${PIPESTATUS[0]}
+  set -e
+  elapsed=$((SECONDS - start))
+  if [ "${status}" -eq 0 ]; then
+    printf '    ✓ 完成（%ss）\n' "${elapsed}"
+  else
+    printf '    ✗ 失败（%ss），最后 30 行：\n' "${elapsed}" >&2
+    tail -n 30 "${logfile}" >&2
+    return "${status}"
   fi
 }
 
 node_major() { node -v 2>/dev/null | sed 's/^v//' | cut -d. -f1; }
 
 ensure_node() {
+  step "准备 Node（需要时自动下载安装）"
   if [ "${FORCE_LOCAL_NODE}" != "1" ] && command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
     major="$(node_major || echo 0)"
     if [ "${major}" -ge 20 ] 2>/dev/null; then
-      say "使用系统 Node $(node -v)"
+      printf '    使用系统 Node %s\n' "$(node -v)"
       return 0
     fi
     warn "系统 Node 版本过低（$(node -v)），改装本地 Node ${NODE_VERSION}"
   else
-    say "未检测到可用的 Node，准备安装本地 Node ${NODE_VERSION}"
+    printf '    未检测到可用的 Node，准备安装本地 Node %s\n' "${NODE_VERSION}"
   fi
-  if [ "${DRY_RUN}" = "1" ]; then say "[dry-run] 下载并解压 Node ${NODE_VERSION} 到 ${AGENT_HOME}/toolchain"; return 0; fi
   TOOLCHAIN_DIR="${AGENT_HOME}/toolchain"
   NODE_DIR="${TOOLCHAIN_DIR}/node-${NODE_VERSION}-${NODE_OS}-${NODE_ARCH}"
-  mkdir -p "${TOOLCHAIN_DIR}"
-  if [ ! -x "${NODE_DIR}/bin/node" ]; then
-    TARBALL="${TOOLCHAIN_DIR}/node-${NODE_VERSION}-${NODE_OS}-${NODE_ARCH}.tar.gz"
-    URL="https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_OS}-${NODE_ARCH}.tar.gz"
-    say "下载 ${URL}"
+  TARBALL="${TOOLCHAIN_DIR}/node-${NODE_VERSION}-${NODE_OS}-${NODE_ARCH}.tar.gz"
+  URL="https://nodejs.org/dist/${NODE_VERSION}/node-${NODE_VERSION}-${NODE_OS}-${NODE_ARCH}.tar.gz"
+  if [ "${DRY_RUN}" = "1" ]; then printf '    [dry-run] 下载 %s\n' "${URL}"; return 0; fi
+  if [ -x "${NODE_DIR}/bin/node" ]; then
+    printf '    已存在本地 Node：%s\n' "${NODE_DIR}"
+  else
+    mkdir -p "${TOOLCHAIN_DIR}"
+    printf '    下载 %s\n' "${URL}"
     download "${URL}" "${TARBALL}" || die "Node 下载失败（${URL}）。检查网络，或用 NODE_VERSION 指定可用版本。"
+    printf '    解压到 %s\n' "${TOOLCHAIN_DIR}"
     tar -xzf "${TARBALL}" -C "${TOOLCHAIN_DIR}" || die "Node 解压失败"
     rm -f "${TARBALL}"
   fi
   [ -x "${NODE_DIR}/bin/node" ] || die "未找到 Node 可执行文件：${NODE_DIR}/bin/node"
   export PATH="${NODE_DIR}/bin:${PATH}"
-  say "本地 Node：$(node -v)"
+  printf '    本地 Node：%s\n' "$(node -v)"
 }
 
 ensure_pnpm() {
-  if command -v pnpm >/dev/null 2>&1; then say "使用系统 pnpm $(pnpm --version)"; return 0; fi
-  if [ "${DRY_RUN}" = "1" ]; then say "[dry-run] 在 ${AGENT_HOME}/pnpm 安装 pnpm@${PNPM_VERSION}"; return 0; fi
-  say "未检测到 pnpm，安装到 ${AGENT_HOME}/pnpm（pnpm@${PNPM_VERSION}）"
-  mkdir -p "${AGENT_HOME}/pnpm"
-  if ! npm install --prefix "${AGENT_HOME}/pnpm" --no-audit --no-fund "pnpm@${PNPM_VERSION}" >"${AGENT_HOME}/pnpm-install.log" 2>&1; then
-    tail -n 40 "${AGENT_HOME}/pnpm-install.log" >&2
-    die "pnpm 安装失败（详见 ${AGENT_HOME}/pnpm-install.log）"
+  if command -v pnpm >/dev/null 2>&1; then
+    step "准备 pnpm"
+    printf '    使用系统 pnpm %s\n' "$(pnpm --version)"
+    return 0
   fi
+  run_step "安装 pnpm@${PNPM_VERSION}" "${LOG_DIR}/pnpm-install.log" npm install --prefix "${AGENT_HOME}/pnpm" --no-audit --no-fund --loglevel=http "pnpm@${PNPM_VERSION}"
   export PATH="${AGENT_HOME}/pnpm/node_modules/.bin:${PATH}"
-  say "本地 pnpm：$(pnpm --version)"
+  printf '    本地 pnpm：%s\n' "$(pnpm --version)"
 }
 
 ensure_dsh() {
   if command -v dsh >/dev/null 2>&1; then
     v="$(dsh --version 2>/dev/null | tail -1)"
     case "${v}" in
-      0.1.6*) say "使用系统 dsh ${v}"; return 0 ;;
+      0.1.6*) step "准备 DSH"; printf '    使用系统 dsh %s\n' "${v}"; return 0 ;;
       *) warn "系统 dsh 版本 ${v} 与所需 ${DSH_VERSION} 不一致，改装本地 dsh" ;;
     esac
-  else
-    say "未检测到 dsh，安装到 ${AGENT_HOME}/dsh（@deepseek-ai/dsh@${DSH_VERSION}）"
   fi
-  if [ "${DRY_RUN}" = "1" ]; then say "[dry-run] 在 ${AGENT_HOME}/dsh 安装 @deepseek-ai/dsh@${DSH_VERSION}"; return 0; fi
-  mkdir -p "${AGENT_HOME}/dsh"
-  if ! npm install --prefix "${AGENT_HOME}/dsh" --no-audit --no-fund "@deepseek-ai/dsh@${DSH_VERSION}" >"${AGENT_HOME}/dsh-install.log" 2>&1; then
-    tail -n 40 "${AGENT_HOME}/dsh-install.log" >&2
-    die "dsh 安装失败（详见 ${AGENT_HOME}/dsh-install.log）"
-  fi
+  run_step "安装 @deepseek-ai/dsh@${DSH_VERSION}" "${LOG_DIR}/dsh-install.log" npm install --prefix "${AGENT_HOME}/dsh" --no-audit --no-fund --loglevel=http "@deepseek-ai/dsh@${DSH_VERSION}"
   export PATH="${AGENT_HOME}/dsh/node_modules/.bin:${PATH}"
-  say "本地 dsh：$(dsh --version 2>/dev/null | tail -1)"
+  printf '    本地 dsh：%s\n' "$(dsh --version 2>/dev/null | tail -1)"
 }
 
 resolve_spec() {
@@ -159,11 +185,12 @@ resolve_spec() {
 
 install_plugin() {
   spec="$(resolve_spec)"
-  say "把插件加入 profile「${PROFILE}」：${spec}"
-  if [ "${DRY_RUN}" = "1" ]; then say "[dry-run] dsh plugin --profile ${PROFILE} add ${spec}"; return 0; fi
-  if ! dsh plugin --profile "${PROFILE}" add "${spec}"; then
-    die "插件安装失败。若提示缺少 allowBuilds：把 dsh-trading-agent 写进 ${HOME}/.dsh/profiles/${PROFILE}/pnpm-workspace.yaml 的 allowBuilds 后重跑；或改用与本脚本放在同一目录的预构建 .tgz。"
+  if [ "${DRY_RUN}" = "1" ]; then
+    step "安装插件到 profile「${PROFILE}」"
+    printf '    [dry-run] dsh plugin --profile %s add %s\n' "${PROFILE}" "${spec}"
+    return 0
   fi
+  run_step "安装插件到 profile「${PROFILE}」：${spec}" "${LOG_DIR}/plugin-add.log" dsh plugin --profile "${PROFILE}" add "${spec}" || die "插件安装失败。若提示缺少 allowBuilds：把 dsh-trading-agent 写进 ${HOME}/.dsh/profiles/${PROFILE}/pnpm-workspace.yaml 的 allowBuilds 后重跑；或改用与本脚本同目录的预构建 .tgz。"
 }
 
 start_dsh() {
@@ -171,7 +198,7 @@ start_dsh() {
     say "已按 --no-start 跳过启动。手动启动：dsh --profile ${PROFILE}"
     return 0
   fi
-  say "启动 DSH（profile：${PROFILE}）。首次启动会自动初始化 profile 并下载依赖，可能需要几分钟。"
+  say "启动 DSH（profile：${PROFILE}）。首次启动会初始化 profile 并下载依赖，需要几分钟。"
   say "提示：DSH 需要一个模型 provider/API key 才能对话；插件出图不需要 key，TypeSafe 校准 key 可选。"
   if [ "${OPEN}" = "1" ]; then
     dsh --profile "${PROFILE}"
@@ -181,6 +208,7 @@ start_dsh() {
 }
 
 say "dsh-trading-agent 一键启动（平台 ${NODE_OS}-${NODE_ARCH}，AGENT_HOME=${AGENT_HOME}）"
+say "安装日志目录：${LOG_DIR}"
 ensure_node
 ensure_pnpm
 ensure_dsh

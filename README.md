@@ -24,6 +24,8 @@ Windows：在 PowerShell 里执行 `powershell -ExecutionPolicy Bypass -File .\s
 
 脚本会自动完成：识别平台 → 缺 Node 就下载本地 Node（≥20）→ 缺 pnpm 就装到 `~/.dsh-trading-agent` → 缺 DSH 就装 `@deepseek-ai/dsh@0.1.6-alpha.2` → 把插件加入 `web` profile → 启动 DSH 并打开浏览器。**全程不需要管理员权限，也不改系统安装**（缺什么就装到 `~/.dsh-trading-agent` 下自用）。
 
+安装过程会显示每一步的进度与耗时，下载带进度条；每一步日志实时输出，并保存在 `~/.dsh-trading-agent/logs/`（Windows 为 `%USERPROFILE%\.dsh-trading-agent\logs\`），失败时自动打印日志末尾。
+
 常用参数：`--profile desktop` / `-Profile desktop`（桌面端）、`--spec ...` / `-Spec ...`（改用 GitHub 或本地源）、`--no-start` / `-NoStart`、`--toolchain-only` / `-ToolchainOnly`、`--dry-run` / `-DryRun`、`--help` / `-Help`。
 
 要求：能访问 npm 与 nodejs.org；首次启动会初始化 profile 并下载 DSH 依赖，需要几分钟。DSH 还需要一个**模型 provider / API key** 才能对话（首次 onboarding 里配置）；插件出图不需要 key。
