@@ -122,8 +122,8 @@ const FETCH_CAP_NOTE = (() => {
   const spans = ["15m", "1h", "4h", "1d", "1w"]
     .map((interval) => `${interval} ${describeBarsSpan(DEFAULT_BAR_POLICY.maxBars, interval)}`)
     .join("、");
-  return `单次最多取 ${DEFAULT_BAR_POLICY.maxBars} 根已收盘 K 线（${spans}）；`
-    + "要更长的历史就换更大的周期，而不是缩短指标周期。";
+  return `单次请求能覆盖的历史长度：${spans}（各周期均以 ${DEFAULT_BAR_POLICY.maxBars} 根已收盘 K 线为限）。`
+    + "**先按要覆盖的时间跨度选周期**：想覆盖更长的历史就换更大的周期，而不是把指标周期拉长。";
 })();
 
 // ── 证据缓存：trading_chart 的出图结果供 trading_confidence 复用 ─────────────

@@ -81,17 +81,18 @@ describe("撞上取数上限时的说法要能纠正", () => {
     const { provider } = limitedProvider(5_000);
     const result = await closedBars(provider, { symbol: "BTC", interval: "1h", needs: 1_500 }, { now: NOW });
     if (result.ok !== false) throw new Error("expected failure");
-    expect(result.error.hint).toContain("1000");     // 单次上限
-    expect(result.error.hint).toContain("1h");
-    expect(result.error.hint).toContain("4h");       // 更大的周期能覆盖更长的历史
-    expect(result.error.hint).toContain("42 天");    // 1000×1h 的跨度
+    // 先说"本周期只能覆盖多久"，再说需要多少根；并给出更大周期的时间覆盖。
+    expect(result.error.hint).toContain("只能覆盖");
+    expect(result.error.hint).toContain("42 天");
+    expect(result.error.hint).toContain("4h");
+    expect(result.error.hint).toContain("167 天");
   });
 
   it("已收盘根数本身不足时：给实际数量，不谎称是上限问题", async () => {
     const { provider } = limitedProvider(50);
     const result = await closedBars(provider, { symbol: "BTC", interval: "1h", needs: 900 }, { now: NOW });
     if (result.ok !== false) throw new Error("expected failure");
-    expect(result.error.hint).not.toContain("单次最多");
+    expect(result.error.hint).not.toContain("只能覆盖");
     expect(result.error.hint).toContain("50");
     expect(result.error.hint).toContain("900");
   });

@@ -208,16 +208,15 @@ describe("skill v3：衍生品数据引导", () => {
 describe("skill v3：取数上限是 agent 必须先知道的事实", () => {
   const body = tradingChartSkill.content;
 
-  it("给出上限与各周期覆盖的跨度", () => {
-    expect(body).toContain("1000 根");
-    expect(body).toContain("1h");
+  it("以时间跨度（而非根数）表述取数能力", () => {
+    expect(body).toContain("按时间思考，不要按根数思考");
     expect(body).toContain("约 42 天");
     expect(body).toContain("约 1000 天");
   });
 
-  it("指明补救方向是换更大的周期，而不是缩短指标周期", () => {
+  it("指明补救方向是先确定时间跨度、再换更大的周期", () => {
+    expect(body).toContain("先确定要覆盖多长时间，再选周期");
     expect(body).toContain("换更大的周期");
-    expect(body).toContain("而不是缩短指标周期");
   });
 
   it("说明两个数据源在上限上的差别", () => {

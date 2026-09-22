@@ -1,6 +1,16 @@
 import type { Candle, ChartSpec, PaneSpec, SeriesSpec } from "../shared/chartSpec";
 import { computeIndicators, DEFAULT_INDICATORS, type IndicatorConfig } from "./indicators";
 
+/**
+ * 取数能力的**语义表述**：先说覆盖多长时间，根数只作附带。
+ *
+ * agent 的问题是"今天 / 这周 / 这月"，单位是时间；根数是实现细节。让上限以时间为单位
+ * 出现，agent 才能直接判断"我想要的历史在这个周期上拿不拿得到"。
+ */
+export function describeFetchCoverage(bars: number, interval: string): string {
+  return `覆盖约 ${describeSpanWithoutApprox(bars, interval)}（${bars} 根）`;
+}
+
 /** 默认周期集合（工单 04 会做时间词映射）。 */
 export const DEFAULT_TIMEFRAMES = ["15m", "1h", "4h", "1d"];
 
@@ -41,6 +51,11 @@ export function describeBarsSpan(bars: number, interval: string): string {
     return `约 ${rounded} 小时`;
   }
   return `约 ${Math.round(hours / 24)} 天`;
+}
+
+/** "约 42 天" / "约 23 小时" —— 去掉 "约 " 前缀，供拼接使用。 */
+function describeSpanWithoutApprox(bars: number, interval: string): string {
+  return describeBarsSpan(bars, interval).replace(/^约 /, "");
 }
 
 /** 取根数的策略：只有这三个旋钮，根数是算出来的。 */

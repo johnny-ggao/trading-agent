@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { barsForInterval, buildChartSpec, describeBarsSpan, intervalToMs, requiredWarmupBars } from "./chart";
+import { barsForInterval, buildChartSpec, describeBarsSpan, describeFetchCoverage, intervalToMs, requiredWarmupBars } from "./chart";
 import { DEFAULT_INDICATORS } from "./indicators";
 
 describe("周期转毫秒", () => {
@@ -81,5 +81,20 @@ describe("把根数换算成人类可读的跨度（用于向 agent 说明取数
     expect(describeBarsSpan(5, "1h")).toBe("约 5 小时");
     expect(describeBarsSpan(6, "4h")).toBe("约 1 天");
     expect(describeBarsSpan(1, "15m")).toBe("约 0.25 小时");
+  });
+});
+
+describe("以时间跨度表述取数能力（agent 的语义单位）", () => {
+  it("先说覆盖多久，根数只是附带", () => {
+    expect(describeFetchCoverage(1_000, "1h")).toBe("覆盖约 42 天（1000 根）");
+    expect(describeFetchCoverage(1_000, "1d")).toBe("覆盖约 1000 天（1000 根）");
+  });
+
+  it("恰好一天走天数分支", () => {
+    expect(describeBarsSpan(24, "1h")).toBe("约 1 天");
+  });
+
+  it("不足一天仍用小时", () => {
+    expect(describeBarsSpan(23, "1h")).toBe("约 23 小时");
   });
 });

@@ -5,7 +5,7 @@
  * 于是 `src/index.ts` 里的工具注册只剩下参数转译。**取数一律走已收盘边界**
  * （`closedCandles.ts`），并且所有响应都自带 grounding。
  */
-import { barsForInterval, DEFAULT_BAR_POLICY, describeBarsSpan, intervalToMs } from "./chart";
+import { barsForInterval, DEFAULT_BAR_POLICY, describeBarsSpan, describeFetchCoverage, intervalToMs } from "./chart";
 import { partitionCandles } from "./closedCandles";
 import { computeIndicatorFacts, warmupBarsFor, type IndicatorFact, type IndicatorSelector } from "./indicatorFacts";
 import { DEFAULT_INDICATORS } from "./indicators";
@@ -160,13 +160,13 @@ function describeShortfall(needs: number, available: number, interval: string): 
   // 补救方向只有两个：换更大的周期（同根数覆盖更长历史），或缩短指标周期。**不要**建议去更小的周期。
   const viaLarger = larger === interval
     ? "缩短指标周期"
-    : `换更大的周期（${larger} 上 ${DEFAULT_BAR_POLICY.maxBars} 根覆盖 ${describeBarsSpan(DEFAULT_BAR_POLICY.maxBars, larger)}）`;
+    : `换更大的周期（${larger} ${describeFetchCoverage(DEFAULT_BAR_POLICY.maxBars, larger)}）`;
   if (needs > DEFAULT_BAR_POLICY.maxBars) {
-    return `本周期单次最多取 ${DEFAULT_BAR_POLICY.maxBars} 根已收盘 K 线`
-      + `（${interval} 上覆盖 ${describeBarsSpan(DEFAULT_BAR_POLICY.maxBars, interval)}），本次需要 ${needs} 根。`
-      + `要更长的历史就${viaLarger}。`;
+    return `本周期单次只能覆盖${describeBarsSpan(DEFAULT_BAR_POLICY.maxBars, interval)}的历史`
+      + `（${DEFAULT_BAR_POLICY.maxBars} 根），而本次请求需要 ${needs} 根。`
+      + `要覆盖更长的历史就${viaLarger}。`;
   }
-  return `本次需要 ${needs} 根，实际只取到 ${available} 根已收盘 K 线；`
+  return `本次请求需要 ${needs} 根，该周期上只取到 ${available} 根已收盘 K 线；`
     + `可以${viaLarger}，或换一个该周期上历史更长的币种。`;
 }
 
