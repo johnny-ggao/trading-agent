@@ -54,9 +54,9 @@ describe("skill 正文教模型怎么用 trading_chart", () => {
     expect(body).toContain("声明");
   });
 
-  it("教模型用市场状态与多周期共振", () => {
+  it("教模型用锚点里的市场状态（多周期共振已随 ADR-0008 移出锚点）", () => {
     expect(body).toContain("市场状态");
-    expect(body).toContain("共振");
+    expect(body).toContain("context");
   });
 
   it("指标推荐只作文本、不改图", () => {
@@ -108,5 +108,51 @@ describe("skill 正文的分层契约与不构成建议", () => {
     expect(body).toContain("枢轴点");
     expect(body).toContain("规则信号箭头");
     expect(body).toContain("不要说");
+  });
+});
+
+describe("skill v3：按需取数的引导词", () => {
+  const body = tradingChartSkill.content;
+
+  it("给出调用顺序，且指明先出图拿锚点", () => {
+    expect(body).toContain("trading_indicator");
+    expect(body).toContain("trading_levels");
+    expect(body).toContain("调用顺序");
+    expect(body).toMatch(/1\. `trading_chart`/);
+  });
+
+  it("指标清单列出精确 id 与参数，并警告拼错会失败", () => {
+    for (const id of ["ma:50", "ema:20", "rsi:14", "macd", "mfi:14", "bollinger:20/2", "atr:14", "supertrend:10/3", "adx:14", "vwma:20", "obv"]) {
+      expect(body).toContain(id);
+    }
+    expect(body).toContain("拼错会调用失败");
+  });
+
+  it("说明每轮 ≤8 项且互补，并指出这是单轮上限", () => {
+    expect(body).toContain("不超过 8 项");
+    expect(body).toContain("单轮上限");
+    expect(body).toContain("再发一轮");
+  });
+
+  it("要求参数用常用档位，偏离要说明理由", () => {
+    expect(body).toContain("档位");
+    expect(body).toContain("说明理由");
+  });
+
+  it("单一事实来源：引数可追溯、冲突要指出、禁止无依据的声明", () => {
+    expect(body).toContain("单一事实来源");
+    expect(body).toContain("追到某次工具响应");
+    expect(body).toContain("指出冲突");
+    expect(body).toContain("禁止");
+  });
+
+  it("数据不足时不许硬算", () => {
+    expect(body).toContain("ok=false");
+    expect(body).toContain("required");
+    expect(body).toContain("不要");
+  });
+
+  it("要求回答结尾附关键点表格", () => {
+    expect(body).toContain("Markdown 表格");
   });
 });

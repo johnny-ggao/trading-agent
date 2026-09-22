@@ -187,4 +187,24 @@
 
 ## Comments
 
+- 2026-09-22（实现）：**纵切 1–7 落地。** 按 ADR-0008 完成：`indicatorFacts`（12 种指标：
+  ma/ema/rsi/atr/macd/vwma/mfi/adx/obv/bollinger 三轨/supertrend）、`levelFacts`（可调容差/
+  敏感度/条数，带 touches 与 pivotTimes）、`facts.ts`（工具层，成功回 grounding、失败回
+  required/available）、`anchor.ts`（最小锚点）、`indicatorSpec.ts`（紧凑字符串解析）、
+  `trading_indicator` 与 `trading_levels` 注册、skill v3 引导词。全库 211 例通过。
+  实盘核对：锚点 720 根/formingBars 1；`ma:50`+`rsi:14`+`macd` 同落一根已收盘 bar；
+  `tolerancePct 0.3 + maxLevels 2` 返回带枢轴时间的阻力；`ma:900` → required 900/available 719。
+  实测记录：`trading-signals` 的 OBV 构造参数要求 ≥2（首根只建基准）；滚动类指标第一个值
+  出现在下标 period（需 period+1 根）。
 - 2026-09-22：**由用户提出的架构批评促成**——"预先把指标捆绑好交给模型会限制它的推理能力，应该让它按结果一步步取数"。设计过程与三个选项的取舍记录在本工单的对话里；结论见 ADR-0008：**代码负责算，agent 负责选**；渲染仍固定（视觉需要），推理改为按需。
+
+## 待定项
+
+- **多周期共振的去留**：`resonance`（高一级周期定结构/方向）此前随 `trading_chart` 一并给出，
+  按 ADR-0008 已从锚点移出。规格用户故事 25 明确要求共振，因此需要决定：放进锚点（成本约数百
+  token，但又是一项预设）、做成工具（多一个工具面），或由 `trading_indicator` 顺带给出高周期
+  的 `context`。**实现暂不恢复，等用户定。**
+- **`superTrend` 的 `warmupBars` 目前报 `2×period`（保守）**；实测在 `period=10` 时已能出值，
+  可收紧为实测值。
+- **MACD 只给了主线 DIF**（`macd:12/26/9` 的 `latest` 是 DIF）；histogram 与 signal 的单独取法
+  尚未暴露，模型若需要需再扩选择器。
