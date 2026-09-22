@@ -269,3 +269,16 @@ describe("接受任意写法：币种名与现货对都能用", () => {
     expect((JSON.parse(bodies[0]!) as { req: { coin: string } }).req.coin).toBe("BTC");
   });
 });
+
+describe("保留上限的自洽性", () => {
+  it("即使上游多给，也不越过声明的 5000 根上限", async () => {
+    // 故意返回比保留上限多 1 根
+    const { fetch } = fakeFetch(klines(HL_RETENTION_LIMIT + 1, 1_700_000_000_000));
+    const provider = new HyperliquidProvider({ fetch });
+    const batch = await provider.fetchCandleBatch("BTC", "1h", { limit: HL_RETENTION_LIMIT + 1 });
+    expect(batch.candles.length).toBe(HL_RETENTION_LIMIT);
+    expect(batch.truncated).toBe(true);
+    expect(batch.note).toContain(String(HL_RETENTION_LIMIT));
+    expect(batch.note).not.toContain(String(HL_RETENTION_LIMIT + 1));
+  });
+});

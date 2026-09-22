@@ -30,6 +30,19 @@ export function requiredWarmupBars(config: IndicatorConfig = DEFAULT_INDICATORS)
   return Math.max(maMax, config.rsi ?? 0, macdWarmup, bollingerWarmup, kdjWarmup, atrWarmup);
 }
 
+/**
+ * 把根数按周期换算成可读跨度（向 agent 说明"这道上限相当于多长历史"）。
+ * 不足一天时回小时，避免四舍五入成 "0 天"。
+ */
+export function describeBarsSpan(bars: number, interval: string): string {
+  const hours = (bars * intervalToMs(interval)) / 3_600_000;
+  if (hours < 24) {
+    const rounded = Number.isInteger(hours) ? String(hours) : hours.toFixed(2);
+    return `约 ${rounded} 小时`;
+  }
+  return `约 ${Math.round(hours / 24)} 天`;
+}
+
 /** 取根数的策略：只有这三个旋钮，根数是算出来的。 */
 export interface BarPolicy {
   /** 目标回看时长（毫秒）：周期越短，同样时长对应的根数越多。 */

@@ -5,7 +5,7 @@
  * 于是 `src/index.ts` 里的工具注册只剩下参数转译。**取数一律走已收盘边界**
  * （`closedCandles.ts`），并且所有响应都自带 grounding。
  */
-import { barsForInterval, DEFAULT_BAR_POLICY, intervalToMs } from "./chart";
+import { barsForInterval, DEFAULT_BAR_POLICY, describeBarsSpan, intervalToMs } from "./chart";
 import { partitionCandles } from "./closedCandles";
 import { computeIndicatorFacts, warmupBarsFor, type IndicatorFact, type IndicatorSelector } from "./indicatorFacts";
 import { DEFAULT_INDICATORS } from "./indicators";
@@ -125,8 +125,7 @@ export async function closedBars(
         reason: "insufficient_closed_bars",
         required: input.needs,
         available,
-        hint: `${input.hint ?? "已收盘 K 线不足。"}（本周期单次最多取 ${DEFAULT_BAR_POLICY.maxBars} 根，`
-          + `本次需要 ${input.needs} 根）`,
+        hint: `${input.hint ?? ""}${describeShortfall(input.needs, available, interval)}`,
       },
     };
   }
@@ -148,6 +147,27 @@ export async function closedBars(
       },
     },
   };
+}
+
+/**
+ * 把"要多少 / 拿到多少"翻译成可纠正的指引。
+ *
+ * 关键区分：撞上**单次取数上限**时该换更大的周期（同样根数覆盖更长历史）；
+ * 只是**当前根数不够**时说明实际拿到多少。两者补救方式不同，不能混为一谈。
+ */
+function describeShortfall(needs: number, available: number, interval: string): string {
+  const larger = higherInterval(interval);
+  // 补救方向只有两个：换更大的周期（同根数覆盖更长历史），或缩短指标周期。**不要**建议去更小的周期。
+  const viaLarger = larger === interval
+    ? "缩短指标周期"
+    : `换更大的周期（${larger} 上 ${DEFAULT_BAR_POLICY.maxBars} 根覆盖 ${describeBarsSpan(DEFAULT_BAR_POLICY.maxBars, larger)}）`;
+  if (needs > DEFAULT_BAR_POLICY.maxBars) {
+    return `本周期单次最多取 ${DEFAULT_BAR_POLICY.maxBars} 根已收盘 K 线`
+      + `（${interval} 上覆盖 ${describeBarsSpan(DEFAULT_BAR_POLICY.maxBars, interval)}），本次需要 ${needs} 根。`
+      + `要更长的历史就${viaLarger}。`;
+  }
+  return `本次需要 ${needs} 根，实际只取到 ${available} 根已收盘 K 线；`
+    + `可以${viaLarger}，或换一个该周期上历史更长的币种。`;
 }
 
 /** 优先用带来源信息的 `fetchCandleBatch`（Hyperliquid 的 5000 根上限），否则退回裸数组。 */
@@ -190,7 +210,7 @@ export async function requestIndicatorFacts(
     symbol: input.symbol,
     interval,
     needs: Math.max(...input.indicators.map(warmupBarsFor)),
-    hint: "已收盘 K 线不足以算出这些指标。改用更长的周期，或换更短的指标参数。",
+    hint: "" /* 由 closedBars 统一给出可纠正的说明 */,
   }, options);
   if (closed.ok !== true) return closed.error;
   const { value } = closed;
@@ -264,7 +284,7 @@ export async function requestLevelFacts(
     symbol: input.symbol,
     interval,
     needs: MIN_BARS_FOR_PIVOTS,
-    hint: "K 线太少，撑不起枢轴与价位判断；换成更小的周期以取得更多 K 线。",
+    hint: "",
   }, options);
   if (closed.ok !== true) return closed.error;
   const series = closed.value;
@@ -333,13 +353,13 @@ export async function requestResonance(
       symbol: input.symbol,
       interval: currentInterval,
       needs: MIN_BARS_FOR_CONTEXT,
-      hint: `${currentInterval} 的已收盘 K 线不足以计算市场状态。改用更小的周期或更短的指标参数。`,
+      hint: "",
     }, options),
     closedBars(provider, {
       symbol: input.symbol,
       interval: higher,
       needs: MIN_BARS_FOR_CONTEXT,
-      hint: `${higher} 的已收盘 K 线不足以计算市场状态。改用更小的周期或更短的指标参数。`,
+      hint: "",
     }, options),
   ]);
   if (currentClosed.ok !== true) return currentClosed.error;

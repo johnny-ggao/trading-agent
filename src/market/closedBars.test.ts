@@ -75,3 +75,31 @@ describe("closedBars：取数与判定同一个 needs", () => {
     expect(result.value.grounding.lastClosedBar).toBe(result.value.candles.at(-1)!.time);
   });
 });
+
+describe("撞上取数上限时的说法要能纠正", () => {
+  it("超过单次上限时：说清是上限，并给出更大周期能覆盖的跨度", async () => {
+    const { provider } = limitedProvider(5_000);
+    const result = await closedBars(provider, { symbol: "BTC", interval: "1h", needs: 1_500 }, { now: NOW });
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.error.hint).toContain("1000");     // 单次上限
+    expect(result.error.hint).toContain("1h");
+    expect(result.error.hint).toContain("4h");       // 更大的周期能覆盖更长的历史
+    expect(result.error.hint).toContain("42 天");    // 1000×1h 的跨度
+  });
+
+  it("已收盘根数本身不足时：给实际数量，不谎称是上限问题", async () => {
+    const { provider } = limitedProvider(50);
+    const result = await closedBars(provider, { symbol: "BTC", interval: "1h", needs: 900 }, { now: NOW });
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.error.hint).not.toContain("单次最多");
+    expect(result.error.hint).toContain("50");
+    expect(result.error.hint).toContain("900");
+  });
+
+  it("1w 之上没有更大周期，就不提换周期", async () => {
+    const { provider } = limitedProvider(100);
+    const result = await closedBars(provider, { symbol: "BTC", interval: "1w", needs: 900 }, { now: NOW });
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.error.hint).not.toContain("＞");
+  });
+});

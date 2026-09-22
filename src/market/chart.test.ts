@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { barsForInterval, buildChartSpec, intervalToMs, requiredWarmupBars } from "./chart";
+import { barsForInterval, buildChartSpec, describeBarsSpan, intervalToMs, requiredWarmupBars } from "./chart";
 import { DEFAULT_INDICATORS } from "./indicators";
 
 describe("周期转毫秒", () => {
@@ -64,5 +64,22 @@ describe("图卡控件状态（宿主写进 chartSpec，供客户端回传目标
     expect(spec.symbol).toBe("ETHUSDT");
     expect(spec.interval).toBe("1d");
     expect(spec.timeframes).toEqual(["15m", "1h", "4h", "1d"]);
+  });
+});
+
+describe("把根数换算成人类可读的跨度（用于向 agent 说明取数上限）", () => {
+  it("按周期换算天数", () => {
+    // 1000×1h = 41.67 天 → 42；1000×4h = 166.7 → 167；1000×15m = 10.4 → 10。
+    expect(describeBarsSpan(1000, "1h")).toBe("约 42 天");
+    expect(describeBarsSpan(1000, "4h")).toBe("约 167 天");
+    expect(describeBarsSpan(1000, "1d")).toBe("约 1000 天");
+    expect(describeBarsSpan(1000, "15m")).toBe("约 10 天");
+    expect(describeBarsSpan(1000, "1w")).toBe("约 7000 天");
+  });
+
+  it("不足一天时回小时，不四舍五入成 0 天", () => {
+    expect(describeBarsSpan(5, "1h")).toBe("约 5 小时");
+    expect(describeBarsSpan(6, "4h")).toBe("约 1 天");
+    expect(describeBarsSpan(1, "15m")).toBe("约 0.25 小时");
   });
 });

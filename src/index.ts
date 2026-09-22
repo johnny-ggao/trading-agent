@@ -20,6 +20,7 @@ import {
   TypeSafeConfidenceScorer,
 } from "./analysis/typesafe";
 import { describeIndicators, InvalidChartArgsError } from "./market/intent";
+import { DEFAULT_BAR_POLICY, describeBarsSpan } from "./market/chart";
 import { buildAnchor } from "./market/anchor";
 import { requestDerivatives, requestIndicatorFacts, requestLevelFacts, requestResonance } from "./market/facts";
 import { HyperliquidProvider } from "./market/hyperliquid";
@@ -111,6 +112,20 @@ const hyperliquidProvider = new HyperliquidProvider();
 /** 图卡控件点按钮时请求的端点：直接返回一份新 chartSpec（不经过模型）。 */
 const CHART_ROUTE = "/trading-agent/chart";
 
+/**
+ * 单次取数上限的说明（按周期折算跨度）。
+ *
+ * 这是 agent 必须知道的事实：它通过指标周期表达"要多长历史"，如果不知道上限在哪，
+ * 只能撞墙后才收到一条"换短参数"的误导提示。上限本身按用户判断足够（1d 上 1000 根≈2.7 年）。
+ */
+const FETCH_CAP_NOTE = (() => {
+  const spans = ["15m", "1h", "4h", "1d", "1w"]
+    .map((interval) => `${interval} ${describeBarsSpan(DEFAULT_BAR_POLICY.maxBars, interval)}`)
+    .join("、");
+  return `单次最多取 ${DEFAULT_BAR_POLICY.maxBars} 根已收盘 K 线（${spans}）；`
+    + "要更长的历史就换更大的周期，而不是缩短指标周期。";
+})();
+
 // ── 证据缓存：trading_chart 的出图结果供 trading_confidence 复用 ─────────────
 
 interface CachedView {
@@ -196,6 +211,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         + "RSI 默认关闭（传 rsi 周期即显示），布林带/KDJ/ATR 也按需开启。"
         + "返回的机械数据只用已收盘 K 线算出，形成中（未收盘）的那根不参与任何信号与判断，"
         + "画面上它会以弱化样式区分。只做技术面判读，不构成投资建议。"
+        + FETCH_CAP_NOTE
         + "需要与别的周期比较方向时，传 compareTo 指定要对比的周期（例如日线对周线传 \"1w\"，"
         + "15m 对 1h 传 \"1h\"）——周期对由你决定，不写死。"
         + "出图后如需校准置信度，再调用 trading_confidence。",
@@ -314,6 +330,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         + "归一化参数、需要的预热根数、最新值与最近若干个值。**只用已收盘 K 线**，"
         + "并回传 grounding（最后一根已收盘 bar、用了多少根）。"
         + "indicators 用紧凑字符串：\"ma:50\"、\"ema:20\"、\"rsi:14\"、\"atr:14\"、\"macd:12/26/9\"、\"macd\"。"
+        + FETCH_CAP_NOTE
         + "每轮建议不超过 8 项且互相互补；需要更多可以再发一轮。"
         + "数据不足以算出所请求的指标时返回 ok=false 并说明缺多少根，不要基于不足窗口下结论。",
       parameters: {

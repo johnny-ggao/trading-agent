@@ -109,7 +109,8 @@ export class HyperliquidProvider implements MarketDataProvider {
       type: "candleSnapshot",
       req: { coin: baseCoin(symbol), interval: hlIv, startTime, endTime },
     });
-    const candles = parseCandles(raw);
+    // 防御：即便上游多给了，也不越过自己声明的保留上限（否则 note 的措辞与数字会自相矛盾）。
+    const candles = parseCandles(raw).slice(-HL_RETENTION_LIMIT);
     return this.withRetention(symbol, hlIv, requested, startTime, candles);
   }
 
@@ -132,8 +133,8 @@ export class HyperliquidProvider implements MarketDataProvider {
     const note = candles.length === 0
       ? `${symbol} ${interval} 在该窗口没有取到 K 线：Hyperliquid 只保留最近 ${HL_RETENTION_LIMIT} 根`
         + `（${interval} 约 ${Math.floor((HL_RETENTION_LIMIT * intervalMs(interval)) / 86_400_000)} 天），更早的历史请用 Binance。`
-      : `${symbol} ${interval} 只取到 ${candles.length} 根：Hyperliquid 只保留最近 ${HL_RETENTION_LIMIT} 根，`
-        + `更长回看请用 Binance。`;
+      : `${symbol} ${interval} 本次取到 ${candles.length} 根（已到 Hyperliquid 的保留上限 ${HL_RETENTION_LIMIT} 根），`
+        + `更早的历史请用 Binance。`;
     return { ...base, truncated: true, note };
   }
 
