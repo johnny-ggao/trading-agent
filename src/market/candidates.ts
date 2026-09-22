@@ -33,40 +33,79 @@ export function findSwingPivots(
 }
 
 /**
- * 把枢轴聚成支撑/阻力位：相邻价位在 tolerancePct 内合并，price 取簇内均值，
- * touches 记触碰次数；相对现价低者为支撑、高者为阻力。
+ * 把枢轴聚成支撑/阻力位：相邻价位在 `tolerance` 内合并，price 取簇内均值，touches 记触碰次数；
+ * 相对现价低者为支撑、高者为阻力。
+ *
+ * **`tolerance` 的单位是分数**（`0.01` = 1%），全仓只此一份实现——出图与分析都走它，
+ * 避免"图上画的"与"回答里引用的"因两份实现而悄悄分叉。对外的百分比接口在 facts.ts。
+ * 每条价位附带 `pivotTimes`（形成它的枢轴时间）与 `distancePct`，便于回答里引用具体日期与价位。
  */
 export function findSupportResistance(
   pivots: SwingPivot[],
   lastClose: number,
-  tolerancePct = 0.01,
+  tolerance = 0.01,
 ): PriceLevel[] {
   const sorted = [...pivots].sort((a, b) => a.price - b.price);
-  const clusters: Array<{ prices: number[] }> = [];
+  const clusters: SwingPivot[][] = [];
   for (const pivot of sorted) {
     const current = clusters[clusters.length - 1];
-    if (current !== undefined && Math.abs(pivot.price - current.prices[0]!) / current.prices[0]! <= tolerancePct) {
-      current.prices.push(pivot.price);
+    const anchor = current?.[0]?.price;
+    if (current !== undefined && anchor !== undefined && Math.abs(pivot.price - anchor) / anchor <= tolerance) {
+      current.push(pivot);
       continue;
     }
-    clusters.push({ prices: [pivot.price] });
+    clusters.push([pivot]);
   }
   return clusters.map((cluster) => {
-    const price = cluster.prices.reduce((sum, value) => sum + value, 0) / cluster.prices.length;
+    const price = cluster.reduce((sum, pivot) => sum + pivot.price, 0) / cluster.length;
     const kind = price < lastClose ? "support" : "resistance";
-    return { kind, price, label: kind === "support" ? "S" : "R", touches: cluster.prices.length } as PriceLevel;
+    return {
+      kind,
+      price,
+      label: kind === "support" ? "S" : "R",
+      touches: cluster.length,
+      distancePct: lastClose === 0 ? 0 : ((price - lastClose) / lastClose) * 100,
+      pivotTimes: cluster.map((pivot) => pivot.time).sort((a, b) => a - b),
+    } as PriceLevel;
   });
 }
 
-/** 由区间低/高点给出斐波那契回撤位（价格取 6 位小数，保证可复现）。 */
-export function fibonacciLevels(low: number, high: number): PriceLevel[] {
+/**
+ * 每侧各取离现价最近的至多 `n` 条支撑/阻力（斐波那契不参与）。
+ *
+ * 这是**一个策略，两个消费方**：图上画什么（presentation）与送给 Jev 的证据含什么（confidence）
+ * 共用它，避免"草图"与"证据"悄悄采用不同的取舍。
+ */
+export function nearestPerSide(levels: readonly PriceLevel[], _lastClose: number, n: number): PriceLevel[] {
+  const byDistance = (kind: "support" | "resistance", compare: (a: number, b: number) => number): PriceLevel[] =>
+    levels
+      .filter((level) => level.kind === kind)
+      .sort((a, b) => compare(a.price, b.price))
+      .slice(0, n);
+  return [
+    ...byDistance("support", (a, b) => b - a),
+    ...byDistance("resistance", (a, b) => a - b),
+  ];
+}
+
+/**
+ * 由区间低/高点给出斐波那契回撤位（价格取 6 位小数，保证可复现）。
+ *
+ * `lastClose` 给定时附带 `distancePct`（距现价多远），没有形成它的枢轴，故 `pivotTimes` 为空。
+ */
+export function fibonacciLevels(low: number, high: number, lastClose?: number): PriceLevel[] {
   const range = high - low;
-  return [0.236, 0.382, 0.5, 0.618, 0.786].map((ratio) => ({
-    kind: "fib" as const,
-    price: Number((high - range * ratio).toFixed(6)),
-    label: `Fib ${(ratio * 100).toFixed(1)}%`,
-    touches: 0,
-  }));
+  return [0.236, 0.382, 0.5, 0.618, 0.786].map((ratio) => {
+    const price = Number((high - range * ratio).toFixed(6));
+    return {
+      kind: "fib" as const,
+      price,
+      label: `Fib ${(ratio * 100).toFixed(1)}%`,
+      touches: 0,
+      distancePct: lastClose === undefined || lastClose === 0 ? 0 : ((price - lastClose) / lastClose) * 100,
+      pivotTimes: [] as number[],
+    };
+  });
 }
 
 /** 均线排列：短>中>长为多头，短<中<长为空头，其余为混合；少于两条返回 undefined。 */
@@ -101,7 +140,7 @@ export function computeCandidates(
   const supportResistance = findSupportResistance(pivots, lastClose);
   const low = Math.min(...candles.map((candle) => candle.low));
   const high = Math.max(...candles.map((candle) => candle.high));
-  const levels = [...supportResistance, ...fibonacciLevels(low, high)];
+  const levels = [...supportResistance, ...fibonacciLevels(low, high, lastClose)];
   const maAlignment = movingAverageAlignment(maValues);
   return maAlignment === undefined
     ? { pivots, levels, lastPrice: lastClose }

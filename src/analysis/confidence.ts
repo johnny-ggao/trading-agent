@@ -1,5 +1,6 @@
 import { noul, score, type SystemOneResult } from "@typesafe-ai/sdk";
 import type { ChartCandidates, MarketContext, RuleSignal, TimeframeResonance } from "../shared/analysis";
+import { nearestPerSide } from "../market/candidates";
 
 /** 模型给出的方向性结论：方向 + 失效位 + 理由（理由文本会发给 TypeSafe 评分）。 */
 export type ConfidenceDirection = "bullish" | "bearish" | "range" | "unclear";
@@ -94,11 +95,8 @@ export interface ConfidenceEvidenceInput {
  */
 export function buildConfidenceEvidence(input: ConfidenceEvidenceInput): ConfidenceEvidence {
   const { candidates } = input;
-  const nearest = (kind: "support" | "resistance"): ChartCandidates["levels"] =>
-    candidates.levels
-      .filter((level) => level.kind === kind)
-      .sort((a, b) => (kind === "support" ? b.price - a.price : a.price - b.price))
-      .slice(0, EVIDENCE_LEVELS_PER_SIDE);
+  // 与图上画什么共用同一取舍策略（nearestPerSide）。
+  const nearest = nearestPerSide(candidates.levels, candidates.lastPrice ?? 0, EVIDENCE_LEVELS_PER_SIDE);
   const fibs = candidates.levels.filter((level) => level.kind === "fib");
   return {
     symbol: input.symbol,
@@ -109,7 +107,7 @@ export function buildConfidenceEvidence(input: ConfidenceEvidenceInput): Confide
     context: input.context,
     resonance: input.resonance,
     ...(candidates.maAlignment === undefined ? {} : { maAlignment: candidates.maAlignment }),
-    levels: [...nearest("support"), ...nearest("resistance"), ...fibs].map((level) => ({
+    levels: [...nearest, ...fibs].map((level) => ({
       kind: level.kind,
       price: level.price,
       label: level.label,

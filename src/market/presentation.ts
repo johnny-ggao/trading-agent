@@ -1,5 +1,6 @@
 import type { ChartCandidates, RuleSignal } from "../shared/analysis";
 import type { ChartLevel, ChartMarker } from "../shared/chartSpec";
+import { nearestPerSide } from "./candidates";
 
 /**
  * 价位线颜色：支撑绿、阻力红。
@@ -39,18 +40,8 @@ export function buildChartPresentation(
   candidates: ChartCandidates,
   _ruleSignals: RuleSignal[],
 ): ChartPresentation {
-  const nearest = (
-    kind: "support" | "resistance",
-    compare: (a: number, b: number) => number,
-  ): ChartCandidates["levels"] =>
-    candidates.levels
-      .filter((level) => level.kind === kind)
-      .sort((a, b) => compare(a.price, b.price))
-      .slice(0, MAX_LEVELS_PER_SIDE);
-  const shown = [
-    ...nearest("support", (a, b) => b - a),
-    ...nearest("resistance", (a, b) => a - b),
-  ];
+  // 与送给 Jev 的证据共用同一取舍策略（nearestPerSide），避免"图上画的"与"证据含的"分叉。
+  const shown = nearestPerSide(candidates.levels, candidates.lastPrice, MAX_LEVELS_PER_SIDE);
   const levels: ChartLevel[] = shown.map((level) => ({
     price: level.price,
     label: level.label,

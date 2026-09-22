@@ -8,7 +8,13 @@
  * 纯函数，只在**已收盘** K 线上调用。
  */
 import type { Candle } from "../shared/chartSpec";
-import { fibonacciLevels, type PivotOptions } from "./candidates";
+import {
+  fibonacciLevels,
+  findSupportResistance,
+  findSwingPivots,
+  type PivotOptions,
+} from "./candidates";
+import type { PriceLevel, SwingPivot } from "../shared/analysis";
 
 /** 可请求的价位类别。 */
 export type LevelKind = "support" | "resistance" | "fib" | "pivots";
@@ -22,23 +28,11 @@ export interface LevelRequest {
   maxLevels?: number;
 }
 
-export interface LevelPivot {
-  time: number;
-  price: number;
-  kind: "high" | "low";
-}
+/** 枢轴就是 candidates.ts 的 swing 枢轴——同一个概念，不再重复声明。 */
+export type LevelPivot = SwingPivot;
 
-export interface LevelFact {
-  kind: "support" | "resistance" | "fib";
-  price: number;
-  label: string;
-  /** 落在这一簇里的枢轴个数：越多越"硬"。 */
-  touches: number;
-  /** 相对最后一根已收盘 K 线收盘价的百分比（支撑为负、阻力为正）。 */
-  distancePct: number;
-  /** 形成这条价位的枢轴时间（秒），升序；斐波那契位为空。 */
-  pivotTimes: number[];
-}
+/** 价位就是 candidates.ts 的 PriceLevel——同一个概念，不再重复声明。 */
+export type LevelFact = PriceLevel;
 
 export interface LevelFacts {
   pivots: LevelPivot[];
@@ -52,71 +46,20 @@ export interface LevelFacts {
 const DEFAULT_PIVOT_OPTIONS: PivotOptions = { left: 2, right: 2 };
 const ALL_KINDS: LevelKind[] = ["support", "resistance", "fib", "pivots"];
 
-/** 分形 swing 枢轴（与出图口径一致：严格高于/低于左右各 left/right 根）。 */
-function findPivots(candles: Candle[], options: PivotOptions): LevelPivot[] {
-  const { left, right } = options;
-  const pivots: LevelPivot[] = [];
-  for (let i = left; i < candles.length - right; i += 1) {
-    const candle = candles[i]!;
-    let isHigh = true;
-    let isLow = true;
-    for (let j = i - left; j <= i + right; j += 1) {
-      if (j === i) continue;
-      const other = candles[j]!;
-      if (candle.high <= other.high) isHigh = false;
-      if (candle.low >= other.low) isLow = false;
-    }
-    if (isHigh) pivots.push({ time: candle.time, price: candle.high, kind: "high" });
-    else if (isLow) pivots.push({ time: candle.time, price: candle.low, kind: "low" });
-  }
-  return pivots;
-}
-
-/** 把枢轴聚成支撑/阻力簇，保留簇内成员以便回传枢轴时间。 */
-function clusterLevels(
-  pivots: LevelPivot[],
-  lastClose: number,
-  tolerancePct: number,
-): LevelFact[] {
-  const sorted = [...pivots].sort((a, b) => a.price - b.price);
-  const clusters: LevelPivot[][] = [];
-  for (const pivot of sorted) {
-    const current = clusters[clusters.length - 1];
-    const anchor = current?.[0]?.price;
-    if (current !== undefined && anchor !== undefined && Math.abs(pivot.price - anchor) / anchor <= tolerancePct / 100) {
-      current.push(pivot);
-      continue;
-    }
-    clusters.push([pivot]);
-  }
-  return clusters.map((cluster) => {
-    const price = cluster.reduce((sum, pivot) => sum + pivot.price, 0) / cluster.length;
-    const kind = price < lastClose ? "support" : "resistance";
-    return {
-      kind: kind as LevelFact["kind"],
-      price,
-      label: kind === "support" ? "S" : "R",
-      touches: cluster.length,
-      distancePct: lastClose === 0 ? 0 : ((price - lastClose) / lastClose) * 100,
-      pivotTimes: cluster.map((pivot) => pivot.time).sort((a, b) => a - b),
-    };
-  });
-}
-
 /** 按请求计算价位事实。 */
 export function computeLevelFacts(candles: Candle[], request: LevelRequest = {}): LevelFacts {
   const kinds = request.kinds ?? ALL_KINDS;
   const lastClose = candles.at(-1)?.close ?? 0;
-  const pivots = kinds.includes("pivots")
-    ? findPivots(candles, request.pivotOptions ?? DEFAULT_PIVOT_OPTIONS)
-    : [];
+  // 枢轴与聚类都走 candidates.ts 的单一实现（口径一致）；容差在对外是百分比、对内是分数。
+  const pivotOptions = request.pivotOptions ?? DEFAULT_PIVOT_OPTIONS;
+  const pivots = kinds.includes("pivots") ? findSwingPivots(candles, pivotOptions) : [];
 
   const all: LevelFact[] = [];
   if (kinds.includes("support") || kinds.includes("resistance")) {
-    const clustered = clusterLevels(
-      findPivots(candles, request.pivotOptions ?? DEFAULT_PIVOT_OPTIONS),
+    const clustered = findSupportResistance(
+      findSwingPivots(candles, pivotOptions),
       lastClose,
-      request.tolerancePct ?? 1,
+      (request.tolerancePct ?? 1) / 100,
     );
     const wanted = new Set(kinds);
     all.push(...clustered.filter((level) => wanted.has(level.kind)));

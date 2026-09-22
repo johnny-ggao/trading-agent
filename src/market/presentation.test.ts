@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { buildChartPresentation } from "./presentation";
+import { computeCandidates } from "./candidates";
 import type { ChartCandidates, RuleSignal } from "../shared/analysis";
+import type { Candle } from "../shared/chartSpec";
 
 const candidates: ChartCandidates = {
   pivots: [
@@ -8,9 +10,9 @@ const candidates: ChartCandidates = {
     { time: 8, price: 7, kind: "low" },
   ],
   levels: [
-    { kind: "support", price: 7, label: "S", touches: 1 },
-    { kind: "resistance", price: 13, label: "R", touches: 1 },
-    { kind: "fib", price: 10, label: "Fib 50.0%", touches: 0 },
+    { kind: "support", price: 7, label: "S", touches: 1, distancePct: 0, pivotTimes: [] },
+    { kind: "resistance", price: 13, label: "R", touches: 1, distancePct: 0, pivotTimes: [] },
+    { kind: "fib", price: 10, label: "Fib 50.0%", touches: 0, distancePct: 0, pivotTimes: [] },
   ],
   maAlignment: {
     order: "bullish",
@@ -62,17 +64,40 @@ describe("buildChartPresentation", () => {
       pivots: [],
       lastPrice: 100,
       levels: [
-        { kind: "support", price: 95, label: "S", touches: 1 },
-        { kind: "support", price: 90, label: "S", touches: 1 },
-        { kind: "support", price: 85, label: "S", touches: 1 },
-        { kind: "support", price: 80, label: "S", touches: 1 },
-        { kind: "resistance", price: 105, label: "R", touches: 1 },
-        { kind: "resistance", price: 110, label: "R", touches: 1 },
-        { kind: "resistance", price: 115, label: "R", touches: 1 },
-        { kind: "resistance", price: 120, label: "R", touches: 1 },
-        { kind: "fib", price: 99, label: "Fib 50.0%", touches: 0 },
+        { kind: "support", price: 95, label: "S", touches: 1, distancePct: 0, pivotTimes: [] },
+        { kind: "support", price: 90, label: "S", touches: 1, distancePct: 0, pivotTimes: [] },
+        { kind: "support", price: 85, label: "S", touches: 1, distancePct: 0, pivotTimes: [] },
+        { kind: "support", price: 80, label: "S", touches: 1, distancePct: 0, pivotTimes: [] },
+        { kind: "resistance", price: 105, label: "R", touches: 1, distancePct: 0, pivotTimes: [] },
+        { kind: "resistance", price: 110, label: "R", touches: 1, distancePct: 0, pivotTimes: [] },
+        { kind: "resistance", price: 115, label: "R", touches: 1, distancePct: 0, pivotTimes: [] },
+        { kind: "resistance", price: 120, label: "R", touches: 1, distancePct: 0, pivotTimes: [] },
+        { kind: "fib", price: 99, label: "Fib 50.0%", touches: 0, distancePct: 0, pivotTimes: [] },
       ],
     };
     expect(buildChartPresentation(many, []).levels.map((level) => level.price)).toEqual([95, 90, 85, 105, 110, 115]);
+  });
+});
+
+describe("图与答案同源（共用 candidates.ts 的单一聚类实现）", () => {
+  const HOUR = 3_600;
+  const bars: Candle[] = Array.from({ length: 400 }, (_, i) => {
+    const base = 100 + i * 0.05 + Math.sin(i / 9) * 6;
+    return { time: i * HOUR, open: base - 0.3, high: base + 1.2, low: base - 1.2, close: base, volume: 10 };
+  });
+
+  it("图上画的每条价位都出现在分析结果的完整集合里", () => {
+    const candidates = computeCandidates(bars);
+    const presentation = buildChartPresentation(candidates, []);
+    const chartKeys = presentation.levels.map((level) => `${level.kind}@${level.price}`);
+    const allKeys = candidates.levels.map((level) => `${level.kind}@${level.price}`);
+    expect(chartKeys.every((key) => allKeys.includes(key))).toBe(true);
+  });
+
+  it("每条支撑/阻力带形成它的枢轴时间，可被回答引用", () => {
+    const candidates = computeCandidates(bars);
+    const priced = candidates.levels.filter((level) => level.kind !== "fib");
+    expect(priced.length).toBeGreaterThan(0);
+    expect(priced.every((level) => level.pivotTimes.length > 0)).toBe(true);
   });
 });

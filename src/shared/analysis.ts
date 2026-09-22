@@ -19,6 +19,10 @@ export interface PriceLevel {
   label: string;
   /** 支撑/阻力的触碰次数（越强越高）；斐波那契位为 0。 */
   touches: number;
+  /** 相对最后一根已收盘 K 线收盘价的百分比（支撑为负、阻力为正）；斐波那契位也给。 */
+  distancePct: number;
+  /** 形成这条价位的枢轴时间（秒，升序）；斐波那契位为空数组。 */
+  pivotTimes: number[];
 }
 
 /** 均线排列。 */
