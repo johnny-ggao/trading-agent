@@ -25,6 +25,8 @@ import { buildAnchor } from "./market/anchor";
 import { requestDerivatives, requestIndicatorFacts, requestLevelFacts, requestResonance } from "./market/facts";
 import { HyperliquidProvider } from "./market/hyperliquid";
 import { parseIndicatorSelectors } from "./market/indicatorSpec";
+import { failurePayload } from "./tools/contract";
+import { INDICATOR_OUTPUT_SCHEMA, indicatorBlocks, indicatorPayload } from "./tools/indicator";
 import type { IndicatorSelector } from "./market/indicatorFacts";
 import { buildMarketView, chartRequestFromQuery, loadChart, type MarketView } from "./market/request";
 import { resolveSymbol } from "./market/symbol";
@@ -350,38 +352,8 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         },
       },
       output: {
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            ok: { type: "boolean", required: true },
-            symbol: { type: "string" },
-            interval: { type: "string" },
-            grounding: { type: "json" },
-            indicators: { type: "json" },
-            reason: { type: "string" },
-            required: { type: "number" },
-            available: { type: "number" },
-            hint: { type: "string" },
-          },
-        },
-        render: (_args, value) => {
-          if (value.ok !== true) {
-            return [{
-              type: "text",
-              text: `未能给出指标值（${String(value.reason ?? "unknown")}）：需要 ${String(value.required ?? "?")} 根，`
-                + `当前只有 ${String(value.available ?? "?")} 根已收盘 K 线。${String(value.hint ?? "")}`,
-            }];
-          }
-          const grounding = value.grounding as { lastClosedBar?: number; barsUsed?: number } | undefined;
-          return [
-            {
-              type: "text",
-              text: `已收盘到 bar ${String(grounding?.lastClosedBar ?? "?")}（共 ${String(grounding?.barsUsed ?? "?")} 根，仅已收盘）：`,
-            },
-            { type: "text", text: JSON.stringify(value.indicators) },
-          ];
-        },
+        schema: INDICATOR_OUTPUT_SCHEMA,
+        render: (_args, value) => indicatorBlocks(value),
       },
       execute: async (args) => {
         let selectors: IndicatorSelector[];
@@ -389,13 +361,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           selectors = parseIndicatorSelectors(args.indicators);
         } catch (error) {
           // 拼错的指标名/参数必须变成模型能读懂并纠正的失败，而不是工具级异常。
-          return {
-            ok: false,
-            reason: "invalid_args",
-            required: 0,
-            available: 0,
-            hint: error instanceof Error ? error.message : String(error),
-          };
+          return failurePayload("invalid_args", error instanceof Error ? error.message : String(error));
         }
         const result = await requestIndicatorFacts(provider, {
           symbol: args.symbol,
@@ -403,22 +369,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           indicators: selectors,
           ...(args.lookback === undefined ? {} : { lookback: args.lookback }),
         });
-        if (result.ok !== true) {
-          return {
-            ok: false,
-            reason: result.reason,
-            required: result.required,
-            available: result.available,
-            hint: result.hint,
-          };
-        }
-        return {
-          ok: true,
-          symbol: result.symbol,
-          interval: result.interval,
-          grounding: result.grounding as unknown as Json,
-          indicators: result.indicators as unknown as Json,
-        };
+        return indicatorPayload(result);
       },
     }),
   );
