@@ -31,7 +31,7 @@ export interface PaneSpec {
   title?: string;
 }
 
-/** 图卡控件回传目标状态时需要的当前指标开关。 */
+/** 图卡控件回传目标状态时需要的当前指标开关与图面价位设置。 */
 export interface ChartControls {
   /** 当前均线周期。 */
   ma: number[];
@@ -40,6 +40,12 @@ export interface ChartControls {
   bollinger: boolean;
   kdj: boolean;
   atr: boolean;
+  /** 每侧价位条数（缺省表示用默认值）。 */
+  levelsPerSide?: number;
+  /** 画的价位类别（缺省表示支撑阻力）。 */
+  levelKinds?: string[];
+  /** 显式价位原文（`"<价格>:<类别>"`）：保真回传，否则点开关重拉时会丢掉模型挑的线。 */
+  levels?: string[];
 }
 
 /** 图上标记（可序列化；客户端映射到 lightweight-charts 的 series markers）。 */
@@ -53,11 +59,16 @@ export interface ChartMarker {
   price?: number;
 }
 
-/** 水平价位线：支撑、阻力或斐波那契位。 */
+/**
+ * 水平价位线：机械候选的三类（支撑/阻力/斐波那契）**加上失效位**。
+ *
+ * `invalidation` 是图上唯一的**判读**元素（来自结论，而不是机械候选），因此单独一类、
+ * 用不同样式——否则会被误读成"算出来的候选"。机械候选那一侧（`PriceLevel`）仍只有三类。
+ */
 export interface ChartLevel {
   price: number;
   label: string;
-  kind: "support" | "resistance" | "fib";
+  kind: "support" | "resistance" | "fib" | "invalidation";
   color: string;
 }
 

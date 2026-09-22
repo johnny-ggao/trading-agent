@@ -292,3 +292,23 @@ describe("skill v3：图面内容可配（指标不默认画）", () => {
     expect(body).toContain("默认每侧 3 条");
   });
 });
+
+describe("skill v3：把结论里的价位补画到图上（工单 13）", () => {
+  const body = tradingChartSkill.content;
+
+  it("给出 levels 的写法、类别与互斥关系", () => {
+    expect(body).toContain('"85237.96:support"');
+    expect(body).toContain("invalidation");
+    expect(body).toContain("互斥");
+  });
+
+  it("说明同一回合重调会更新同一张图、跨回合是新图", () => {
+    expect(body).toContain("同一回合的 tab 会被更新");
+    expect(body).toContain("旧图按设计保留原样");
+  });
+
+  it("说明失效位在图上会被区分（判读而非候选）", () => {
+    expect(body).toContain("琥珀色");
+    expect(body).toContain("不是算出来的候选");
+  });
+});

@@ -15,6 +15,10 @@ export interface ControlTarget {
   bollinger: boolean;
   kdj: boolean;
   atr: boolean;
+  /** 图面价位设置：原样带上，否则点任一开关重拉时会丢掉模型挑的价位线。 */
+  levelsPerSide?: number;
+  levelKinds?: string[];
+  levels?: string[];
 }
 
 /** 一次控件变更：换周期或开关某个指标。 */
@@ -33,6 +37,9 @@ export function currentTarget(spec: ChartSpec): ControlTarget {
     bollinger: controls?.bollinger ?? false,
     kdj: controls?.kdj ?? false,
     atr: controls?.atr ?? false,
+    ...(controls?.levelsPerSide === undefined ? {} : { levelsPerSide: controls.levelsPerSide }),
+    ...(controls?.levelKinds === undefined ? {} : { levelKinds: controls.levelKinds }),
+    ...(controls?.levels === undefined ? {} : { levels: controls.levels }),
   };
 }
 
@@ -61,6 +68,10 @@ export function chartQuery(target: ControlTarget): string {
     atr: String(target.atr),
   });
   if (target.rsi !== null) params.set("rsi", String(target.rsi));
+  if (target.levelsPerSide !== undefined) params.set("levelsPerSide", String(target.levelsPerSide));
+  if (target.levelKinds !== undefined) params.set("levelKinds", target.levelKinds.join(","));
+  // 显式价位原文用 `|` 分隔（每条内部含 `:`）。
+  if (target.levels !== undefined) params.set("levels", target.levels.join("|"));
   return params.toString();
 }
 

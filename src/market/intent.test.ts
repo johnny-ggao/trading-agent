@@ -111,3 +111,23 @@ describe("图面价位入参（与价位工具同一姿态：不合法就明确�
     expect(() => resolveChartRequest({ levelKinds: ["suport"] })).toThrow(/suport/);
   });
 });
+
+describe("显式价位入参（点名叫画哪几条线）", () => {
+  it("解析成显式价位交给图面", () => {
+    const r = resolveChartRequest({ levels: ["85237.96:support", "84843:invalidation"] });
+    expect(r.levelOptions.explicitLevels).toEqual([
+      { price: 85237.96, kind: "support", label: "S" },
+      { price: 84843, kind: "invalidation", label: "失效" },
+    ]);
+  });
+
+  it("与 levelsPerSide / levelKinds 互斥：同时给就明确回绝（不静默取其一）", () => {
+    expect(() => resolveChartRequest({ levels: ["100:support"], levelsPerSide: 5 })).toThrow(/二选一|互斥|不能同时/);
+    expect(() => resolveChartRequest({ levels: ["100:support"], levelKinds: ["fib"] })).toThrow(/二选一|互斥|不能同时/);
+  });
+
+  it("格式或类别不合法时报错并说明写法", () => {
+    expect(() => resolveChartRequest({ levels: ["100:suport"] })).toThrow(/suport/);
+    expect(() => resolveChartRequest({ levels: ["abc:support"] })).toThrow(/价格/);
+  });
+});

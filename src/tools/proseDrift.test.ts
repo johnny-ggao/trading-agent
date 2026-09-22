@@ -32,7 +32,7 @@ describe("散文契约不许与实现漂移", () => {
   it("锚点的指路提到全部取数/校准工具", () => {
     const anchor = buildAnchor({
       spec: { symbol: "BTCUSDT", interval: "1h", timeframes: ["1h"], panes: [{ id: "price" }], series: [] },
-      resolved: { symbol: "BTCUSDT", interval: "1h", indicators: { ma: [20], macd: { fast: 12, slow: 26, signal: 9 }, volume: true }, levelOptions: {} },
+      resolved: { symbol: "BTCUSDT", interval: "1h", indicators: { ma: [20], macd: { fast: 12, slow: 26, signal: 9 }, volume: true }, levelOptions: {}, levelControls: {} },
       bars: 100,
       candidates: { pivots: [], levels: [], lastPrice: 1 },
       ruleSignals: [],

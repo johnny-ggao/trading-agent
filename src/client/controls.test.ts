@@ -94,3 +94,36 @@ describe("图卡控件：向宿主端点取新 chartSpec", () => {
     await expect(fetchChartSpec(currentTarget(spec), fetchImpl)).rejects.toThrow();
   });
 });
+
+describe("图面价位设置随控件保真（点开关不丢模型画的线）", () => {
+  it("从 spec.controls 读进目标状态", () => {
+    const spec = {
+      symbol: "BTCUSDT", interval: "1h", timeframes: ["1h"], panes: [], series: [],
+      controls: {
+        ma: [20], rsi: null, bollinger: false, kdj: false, atr: false,
+        levelsPerSide: 5, levelKinds: ["resistance", "fib"], levels: ["85237.96:support", "84843:invalidation"],
+      },
+    } as unknown as Parameters<typeof currentTarget>[0];
+    const target = currentTarget(spec);
+    expect(target.levelsPerSide).toBe(5);
+    expect(target.levels).toEqual(["85237.96:support", "84843:invalidation"]);
+  });
+
+  it("编码进查询串（显式价位用 | 分隔）", () => {
+    const query = chartQuery({
+      symbol: "BTCUSDT", interval: "1h", ma: [20], rsi: null, bollinger: false, kdj: false, atr: false,
+      levels: ["85237.96:support", "84843:invalidation"], levelKinds: ["support", "invalidation"],
+    });
+    expect(query).toContain("levels=85237.96%3Asupport%7C84843%3Ainvalidation");
+    expect(query).toContain("levelKinds=support%2Cinvalidation");
+  });
+
+  it("改开关不影响价位设置", () => {
+    const before = {
+      symbol: "BTCUSDT", interval: "1h", ma: [20], rsi: null, bollinger: false, kdj: false, atr: false,
+      levels: ["84843:invalidation"],
+    };
+    const after = applyChange(before, { kind: "toggle", id: "rsi", on: true });
+    expect(after.levels).toEqual(["84843:invalidation"]);
+  });
+});

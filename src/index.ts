@@ -244,6 +244,14 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           items: { type: "string" },
           description: "图上画哪几类价位：support / resistance / fib；缺省只画支撑阻力（斐波那契默认不上图）。",
         },
+        levels: {
+          type: "array",
+          items: { type: "string" },
+          description: "**点名要画哪几条线**，格式 \"<价格>:<类别>\"，类别 support / resistance / fib / invalidation（失效位）。"
+            + "给了它就替换机械选择、且与 levelsPerSide / levelKinds 互斥（二选一）；上限 20 条。"
+            + "典型用法：分析完（trading_levels 已给出完整价位）在同一回合再调一次，把挑中的关键位与失效位画上"
+            + "——同一回合的 tab 会被更新，不会多开一张图。",
+        },
       },
       output: {
         schema: CHART_OUTPUT_SCHEMA,
@@ -263,6 +271,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
             atr: args.atr,
             levelsPerSide: args.levelsPerSide,
             levelKinds: args.levelKinds,
+            levels: args.levels,
           });
         } catch (error) {
           if (error instanceof InvalidChartArgsError) {

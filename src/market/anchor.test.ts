@@ -32,7 +32,7 @@ function viewOf(overrides: Partial<MarketView> = {}): MarketView {
   const ruleSignals: RuleSignal[] = [];
   return {
     spec,
-    resolved: { symbol: "BTCUSDT", interval: "1h", indicators: { ma: [20, 50, 200], macd: { fast: 12, slow: 26, signal: 9 }, volume: true }, levelOptions: {} },
+    resolved: { symbol: "BTCUSDT", interval: "1h", indicators: { ma: [20, 50, 200], macd: { fast: 12, slow: 26, signal: 9 }, volume: true }, levelOptions: {}, levelControls: {} },
     bars: 720,
     candidates,
     ruleSignals,

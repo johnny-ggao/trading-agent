@@ -1,6 +1,13 @@
 import type { Candle, ChartSpec, PaneSpec, SeriesSpec } from "../shared/chartSpec";
 import { computeIndicators, DEFAULT_INDICATORS, type IndicatorConfig } from "./indicators";
 
+/** 写进 `ChartControls` 的价位设置（原文保真，供工具栏重拉）。 */
+export interface ChartLevelControls {
+  levelsPerSide?: number;
+  levelKinds?: string[];
+  levels?: string[];
+}
+
 /**
  * 取数能力的**语义表述**：先说覆盖多长时间，根数只作附带。
  *
@@ -100,6 +107,7 @@ export function buildChartSpec(
   candles: Candle[],
   config: IndicatorConfig = DEFAULT_INDICATORS,
   formingBars = 0,
+  levelOptions: ChartLevelControls = {},
 ): ChartSpec {
   const panes: PaneSpec[] = [
     { id: "price", title: "价格" },
@@ -126,6 +134,9 @@ export function buildChartSpec(
       bollinger: config.bollinger !== undefined,
       kdj: config.kdj !== undefined,
       atr: config.atr !== undefined,
+      ...(levelOptions.levelsPerSide === undefined ? {} : { levelsPerSide: levelOptions.levelsPerSide }),
+      ...(levelOptions.levelKinds === undefined ? {} : { levelKinds: levelOptions.levelKinds }),
+      ...(levelOptions.levels === undefined ? {} : { levels: levelOptions.levels }),
     },
   };
 }

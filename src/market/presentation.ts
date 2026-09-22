@@ -1,6 +1,7 @@
 import type { ChartCandidates, RuleSignal } from "../shared/analysis";
 import type { ChartLevel, ChartMarker } from "../shared/chartSpec";
 import { nearestPerSide } from "./candidates";
+import type { ExplicitLevel } from "./chartLevels";
 
 /**
  * 价位线颜色：支撑绿、阻力红。
@@ -11,6 +12,8 @@ export const LEVEL_COLORS = {
   support: "#26a69a",
   resistance: "#ef5350",
   fib: "#787b86",
+  /** 失效位：琥珀色，与机械三类区分（它是判读，不是候选）。 */
+  invalidation: "#f5a623",
 } as const;
 
 /**
@@ -27,6 +30,11 @@ export interface ChartLevelOptions {
   perSide?: number;
   /** 画哪几类；缺省只画支撑/阻力（斐波那契不上图）。 */
   kinds?: readonly ("support" | "resistance" | "fib")[];
+  /**
+   * **显式价位**（工单 13）：模型点名要画哪几条线。给了它就**替换**机械选择——
+   * 图面完全由调用方决定，可预期；想"再加一条"就把机械那几条一起写上。
+   */
+  explicitLevels?: readonly ExplicitLevel[];
 }
 
 /** 图上可渲染的机械层：价位线与说明文字。 */
@@ -56,18 +64,26 @@ export function buildChartPresentation(
 ): ChartPresentation {
   const perSide = options.perSide ?? MAX_LEVELS_PER_SIDE;
   const wanted = new Set(options.kinds ?? (["support", "resistance"] as const));
-  // 与送给 Jev 的证据共用同一取舍策略（nearestPerSide），避免"图上画的"与"证据含的"分叉。
-  const shown = [
-    ...nearestPerSide(candidates.levels, candidates.lastPrice, perSide)
-      .filter((level) => wanted.has(level.kind)),
-    ...(wanted.has("fib") ? candidates.levels.filter((level) => level.kind === "fib") : []),
-  ];
-  const levels: ChartLevel[] = shown.map((level) => ({
-    price: level.price,
-    label: level.label,
-    kind: level.kind,
-    color: LEVEL_COLORS[level.kind],
-  }));
+  // 显式价位优先（替换语义）；否则与送给 Jev 的证据共用同一取舍策略（nearestPerSide），
+  // 避免"图上画的"与"证据含的"分叉。
+  const explicit = options.explicitLevels;
+  const levels: ChartLevel[] = explicit !== undefined
+    ? explicit.map((level) => ({
+      price: level.price,
+      label: level.label,
+      kind: level.kind,
+      color: LEVEL_COLORS[level.kind],
+    }))
+    : [
+      ...nearestPerSide(candidates.levels, candidates.lastPrice, perSide)
+        .filter((level) => wanted.has(level.kind)),
+      ...(wanted.has("fib") ? candidates.levels.filter((level) => level.kind === "fib") : []),
+    ].map((level) => ({
+      price: level.price,
+      label: level.label,
+      kind: level.kind,
+      color: LEVEL_COLORS[level.kind],
+    }));
   const notes = candidates.maAlignment === undefined ? [] : [candidates.maAlignment.label];
   return { levels, notes, markers: [] };
 }

@@ -140,3 +140,38 @@ describe("图面价位由参数决定（默认仍是每侧 3 条、只画支撑�
     expect(withFib.levels.some((level) => level.kind === "support")).toBe(false);
   });
 });
+
+describe("显式价位：模型点名画哪条线（替换机械选择）", () => {
+  const candidates: ChartCandidates = {
+    pivots: [],
+    lastPrice: 100,
+    levels: [
+      { kind: "support", price: 95, label: "S", touches: 1, distancePct: -5, pivotTimes: [1] },
+      { kind: "resistance", price: 105, label: "R", touches: 1, distancePct: 5, pivotTimes: [2] },
+    ],
+  };
+
+  it("给了显式价位就不再画机械候选（替换语义）", () => {
+    const { levels } = buildChartPresentation(candidates, [], {
+      explicitLevels: [
+        { price: 85_237.96, kind: "support", label: "S" },
+        { price: 84_843, kind: "invalidation", label: "失效" },
+      ],
+    });
+    expect(levels.map((level) => level.price)).toEqual([85_237.96, 84_843]);
+    expect(levels.some((level) => level.price === 95 || level.price === 105)).toBe(false);
+  });
+
+  it("失效位用与机械三类不同的颜色", () => {
+    const { levels } = buildChartPresentation(candidates, [], {
+      explicitLevels: [{ price: 84_843, kind: "invalidation", label: "失效" }],
+    });
+    expect(levels[0]!.kind).toBe("invalidation");
+    expect(levels[0]!.color).toBe("#f5a623");
+  });
+
+  it("不给显式价位时仍走机械选择（每侧 3 条）", () => {
+    const { levels } = buildChartPresentation(candidates, []);
+    expect(levels.map((level) => level.price)).toEqual([95, 105]);
+  });
+});

@@ -104,6 +104,7 @@ function assemble(resolved: ResolvedChartRequest, closure: CandleClosure): Loade
     candles,
     resolved.indicators,
     closure.formingBars,
+    resolved.levelControls,
   );
   const spec: ChartSpec = { ...baseSpec, series: dropFormingPoints(baseSpec.series, closure) };
   // 机械层一律只用已收盘 K 线：结构、价位、规则信号都不许被未收盘的跳动触发。
@@ -168,10 +169,18 @@ export function chartRequestFromQuery(query: URLSearchParams): ChartRequest {
     kdj: query.get("kdj") === "true",
     atr: query.get("atr") === "true",
     levelsPerSide: parseNumber(query.get("levelsPerSide")),
+    levels: parseChartLevelsParam(query.get("levels")),
     ...(parseStringList(query.get("levelKinds")) === undefined
       ? {}
       : { levelKinds: parseStringList(query.get("levelKinds")) }),
   };
+}
+
+/** 显式价位原文：`|` 分隔（每条内部含 `:`）。 */
+function parseChartLevelsParam(value: string | null): string[] | undefined {
+  if (value === null || value.trim() === "") return undefined;
+  const list = value.split("|").map((part) => part.trim()).filter((part) => part !== "");
+  return list.length > 0 ? list : undefined;
 }
 
 /** 逗号分隔的字符串列表；空则 undefined。 */

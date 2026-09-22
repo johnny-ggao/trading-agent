@@ -1,5 +1,6 @@
-import { DEFAULT_BAR_POLICY } from "./chart";
+import { DEFAULT_BAR_POLICY, type ChartLevelControls } from "./chart";
 import type { ChartLevelOptions } from "./presentation";
+import { parseChartLevels } from "./chartLevels";
 import { DEFAULT_INDICATORS, type IndicatorConfig } from "./indicators";
 import { resolveInterval, type Interval } from "./timeframe";
 
@@ -15,6 +16,11 @@ export interface ChartRequest {
   levelsPerSide?: number;
   /** 图上画哪几类价位（support/resistance/fib）；缺省只画支撑阻力。 */
   levelKinds?: string[];
+  /**
+   * 显式价位：`"<价格>:<类别>"`（类别含 invalidation 失效位）。给了它就**替换**机械选择，
+   * 因此与 `levelsPerSide` / `levelKinds` 互斥。
+   */
+  levels?: string[];
 }
 
 export interface ResolvedChartRequest {
@@ -23,6 +29,8 @@ export interface ResolvedChartRequest {
   indicators: IndicatorConfig;
   /** 交给 presentation 的图面价位选项；缺省为空对象（用它自己的默认值）。 */
   levelOptions: ChartLevelOptions;
+  /** 写进 chartSpec.controls 的价位原文（工具栏重拉时保真）。 */
+  levelControls: ChartLevelControls;
 }
 
 /**
@@ -67,6 +75,23 @@ export function validateChartArgs(request: ChartRequest): void {
       throw new InvalidChartArgsError("levelsPerSide", `不能超过 ${MAX_LEVELS_PER_SIDE_LIMIT}`, request.levelsPerSide);
     }
   }
+  if (request.levels !== undefined) {
+    if (request.levels.length === 0) {
+      throw new InvalidChartArgsError("levels", "不能是空数组；要默认的机械价位就别传这个字段", request.levels);
+    }
+    if (request.levelsPerSide !== undefined || request.levelKinds !== undefined) {
+      throw new InvalidChartArgsError(
+        "levels",
+        "与 levelsPerSide / levelKinds 互斥（显式价位会替换机械选择）；二选一",
+        request.levels,
+      );
+    }
+    try {
+      parseChartLevels(request.levels);
+    } catch (error) {
+      throw new InvalidChartArgsError("levels", error instanceof Error ? error.message : String(error), request.levels);
+    }
+  }
   if (request.levelKinds !== undefined) {
     if (request.levelKinds.length === 0) {
       throw new InvalidChartArgsError("levelKinds", "不能是空数组；要默认的支撑阻力就别传这个字段", request.levelKinds);
@@ -102,8 +127,14 @@ export function resolveChartRequest(request: ChartRequest = {}): ResolvedChartRe
   const levelOptions: ChartLevelOptions = {
     ...(request.levelsPerSide === undefined ? {} : { perSide: request.levelsPerSide }),
     ...(request.levelKinds === undefined ? {} : { kinds: request.levelKinds as ChartLevelOptions["kinds"] }),
+    ...(request.levels === undefined ? {} : { explicitLevels: parseChartLevels(request.levels) }),
   };
-  return { symbol, interval, indicators, levelOptions };
+  const levelControls: ChartLevelControls = {
+    ...(request.levelsPerSide === undefined ? {} : { levelsPerSide: request.levelsPerSide }),
+    ...(request.levelKinds === undefined ? {} : { levelKinds: request.levelKinds }),
+    ...(request.levels === undefined ? {} : { levels: request.levels }),
+  };
+  return { symbol, interval, indicators, levelOptions, levelControls };
 }
 
 /** 人类可读的指标清单，用于回答里声明"用了什么"。 */
