@@ -69,7 +69,7 @@ describe("skill 正文的分层契约与不构成建议", () => {
   const body = tradingChartSkill.content;
 
   it("给出三层产出的显式顺序与各层职责", () => {
-    expect(body).toContain("规则信号（机械） → 结构/形态判断（模型） → 综合结论（模型）");
+    expect(body).toContain("规则信号（机械） → 结构/形态判断（模型） → 综合结论");
     for (const layer of ["规则信号", "结构/形态判断", "综合结论"]) {
       expect(body).toContain(layer);
     }
@@ -152,8 +152,27 @@ describe("skill v3：按需取数的引导词", () => {
     expect(body).toContain("不要");
   });
 
-  it("要求回答结尾附关键点表格", () => {
-    expect(body).toContain("Markdown 表格");
+  it("表格改为「只在被要求时给」，且作为唯一数值台账", () => {
+    expect(body).toContain("只在被要求时给");
+    expect(body).toContain("默认**不附表格**");
+    expect(body).toContain("唯一的数值台账");
+  });
+
+  it("结论前置：读者应在前三行拿到方向/失效位/置信度", () => {
+    expect(body).toContain("结论前置");
+    expect(body).toContain("前三行拿到答案");
+    expect(body).toContain("方向 + 失效位 + 置信度");
+  });
+
+  it("证据按相关性筛，不是把指标全列一遍", () => {
+    expect(body).toContain("与结论相关的那几条");
+    expect(body).toContain("3–6 个关键数值");
+    expect(body).toContain("不是把工具返回的指标全列一遍");
+  });
+
+  it("给长度预算，并禁止同一数值重复出现", () => {
+    expect(body).toContain("≤400 字");
+    expect(body).toContain("不要在正文里讲一遍又在表格里抄一遍");
   });
 });
 

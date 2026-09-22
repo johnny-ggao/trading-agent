@@ -109,7 +109,7 @@ dsh --profile web --dump-config | grep -A1 trading-agent
 
 ## 随包 skill
 
-插件附带一个模型可调用的 skill `trading-chart`，由宿主半边在启动时注册。它教模型何时调用 `trading_chart`、时间词如何映射主周期、指标参数怎么填、默认值是什么，如何按 `规则信号 → 结构/形态判断 → 综合结论` 三层产出可核对的判读、如何用 `trading_confidence` 校准置信度、如何在回答里声明所用默认，以及**不做交易建议**（不给入场/出场/目标价、仓位与买卖指令）。
+插件附带一个模型可调用的 skill `trading-chart`，由宿主半边在启动时注册。它教模型何时调用 `trading_chart`、时间词如何映射主周期、指标参数怎么填、默认值是什么，如何按 `规则信号 → 结构/形态判断 → 综合结论` 三层产出**结论前置、默认 ≤400 字**的判读（证据按相关性筛，不把指标全列一遍；汇总表格只在用户要求时给）、如何用 `trading_confidence` 校准置信度、如何在回答里声明所用默认，以及**不做交易建议**（不给入场/出场/目标价、仓位与买卖指令）。
 
 正文在 [assets/trading-chart.md](assets/trading-chart.md)；构建时由 esbuild 的 `.md` text loader 内联进 `lib/index.js`，所以改完正文要**重新构建并重启**对应 profile。
 
