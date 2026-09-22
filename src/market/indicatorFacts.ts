@@ -7,7 +7,7 @@
  * 传进来的 K 线序列必须已按收盘边界切过（见 `closedCandles.ts`）：这里不做时间判断，
  * 因为"哪根算收盘"是调用方的知识，不是指标公式的知识。
  */
-import { ATR, EMA, MACD, RSI, SMA } from "trading-signals";
+import { ADX, ATR, BollingerBands, EMA, MACD, MFI, OBV, RSI, SMA, SuperTrend, VWMA } from "trading-signals";
 import type { Candle } from "../shared/chartSpec";
 
 /** 一次指标请求：id + 参数。 */
@@ -16,6 +16,14 @@ export type IndicatorSelector =
   | { id: "ema"; period: number }
   | { id: "rsi"; period: number }
   | { id: "atr"; period: number }
+  | { id: "vwma"; period: number }
+  | { id: "mfi"; period: number }
+  | { id: "adx"; period: number }
+  | { id: "obv" }
+  | { id: "bollinger"; period?: number; deviation?: number }
+  | { id: "bollingerUpper"; period?: number; deviation?: number }
+  | { id: "bollingerLower"; period?: number; deviation?: number }
+  | { id: "supertrend"; period?: number; multiplier?: number }
   | { id: "macd"; fast?: number; slow?: number; signal?: number };
 
 /** 单个指标的计算结果：自描述，便于模型判断这个数能不能用。 */
@@ -35,7 +43,19 @@ export function warmupBarsFor(selector: IndicatorSelector): number {
     case "ema":
     case "rsi":
     case "atr":
+    case "vwma":
+    case "mfi":
+    case "adx":
       return selector.period;
+    case "obv":
+      return 2;
+    case "bollinger":
+    case "bollingerUpper":
+    case "bollingerLower":
+      return selector.period ?? 20;
+    case "supertrend":
+      // SuperTrend 需要 ATR 预热再叠一段，保守取 2×周期。
+      return (selector.period ?? 10) * 2;
     case "macd": {
       const fast = selector.fast ?? 12;
       const slow = selector.slow ?? 26;
@@ -52,7 +72,18 @@ function paramsOf(selector: IndicatorSelector): Record<string, number> {
     case "ema":
     case "rsi":
     case "atr":
+    case "vwma":
+    case "mfi":
+    case "adx":
       return { period: selector.period };
+    case "obv":
+      return {};
+    case "bollinger":
+    case "bollingerUpper":
+    case "bollingerLower":
+      return { period: selector.period ?? 20, deviation: selector.deviation ?? 2 };
+    case "supertrend":
+      return { period: selector.period ?? 10, multiplier: selector.multiplier ?? 3 };
     case "macd":
       return { fast: selector.fast ?? 12, slow: selector.slow ?? 26, signal: selector.signal ?? 9 };
   }
@@ -92,6 +123,27 @@ export function computeIndicatorFacts(
   });
 }
 
+/** OBV 要 open/high/low/close/volume 五件套。 */
+function ohlcv(candles: Candle[]): Array<{ open: number; high: number; low: number; close: number; volume: number }> {
+  return candles.map((candle) => ({
+    open: candle.open,
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+    volume: candle.volume ?? 0,
+  }));
+}
+
+/** trading-signals 的部分指标要 high/low/close/volume。 */
+function hlcv(candles: Candle[]): Array<{ high: number; low: number; close: number; volume: number }> {
+  return candles.map((candle) => ({
+    high: candle.high,
+    low: candle.low,
+    close: candle.close,
+    volume: candle.volume ?? 0,
+  }));
+}
+
 /** trading-signals 的部分指标只吃 high/low/close。 */
 function hlc(candles: Candle[]): Array<{ high: number; low: number; close: number }> {
   return candles.map((candle) => ({ high: candle.high, low: candle.low, close: candle.close }));
@@ -108,6 +160,28 @@ function latestFor(candles: Candle[], closes: number[], selector: IndicatorSelec
       return takeLatest(candles, new RSI(selector.period).updates(closes), selector);
     case "atr":
       return takeLatest(candles, new ATR(selector.period).updates(hlc(candles)), selector);
+    case "vwma":
+      return takeLatest(candles, new VWMA(selector.period).updates(hlcv(candles)), selector);
+    case "mfi":
+      return takeLatest(candles, new MFI(selector.period).updates(hlcv(candles)), selector);
+    case "adx":
+      return takeLatest(candles, new ADX(selector.period).updates(hlc(candles)), selector);
+    case "obv":
+      // OBV 的构造参数是"最早可从第几根开始出值"，取 2：首根只建立基准（interval=1 会抛错）。
+      return takeLatest(candles, new OBV(2).updates(ohlcv(candles)), selector);
+    case "bollinger":
+    case "bollingerUpper":
+    case "bollingerLower": {
+      const bb = new BollingerBands(selector.period ?? 20, selector.deviation ?? 2);
+      const pick = selector.id === "bollingerUpper" ? "upper" : selector.id === "bollingerLower" ? "lower" : "middle";
+      const values = bb.updates(closes).map((result) => (result === null ? null : result[pick]));
+      return takeLatest(candles, values, selector);
+    }
+    case "supertrend": {
+      const st = new SuperTrend({ interval: selector.period ?? 10, multiplier: selector.multiplier ?? 3 });
+      const values = st.updates(hlc(candles)).map((result) => (result === null ? null : result.supertrend));
+      return takeLatest(candles, values, selector);
+    }
     case "macd": {
       const macd = new MACD(
         new EMA(selector.fast ?? 12),

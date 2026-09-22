@@ -8,7 +8,7 @@
 import type { IndicatorSelector } from "./indicatorFacts";
 
 /** 只有周期一个参数的指标。 */
-const PERIOD_ONLY = new Set(["ma", "ema", "rsi", "atr"]);
+const PERIOD_ONLY = new Set(["ma", "ema", "rsi", "atr", "vwma", "mfi", "adx"]);
 
 /** 解析单条请求文本。 */
 function parseOne(raw: string): IndicatorSelector {
@@ -24,7 +24,33 @@ function parseOne(raw: string): IndicatorSelector {
     if (!Number.isInteger(period) || period <= 0) {
       throw new Error(`指标 "${raw}" 的周期必须是正整数，收到 "${args[0]}"`);
     }
-    return { id: id as "ma" | "ema" | "rsi" | "atr", period };
+    return { id: id as "ma" | "ema" | "rsi" | "atr" | "vwma" | "mfi" | "adx", period };
+  }
+
+  if (id === "obv") {
+    if (args.length !== 0) throw new Error(`指标 "${raw}" 不接受参数，直接写 "obv"`);
+    return { id: "obv" };
+  }
+
+  if (id === "bollinger" || id === "bollingerupper" || id === "bollingerlower") {
+    const normalised = id === "bollinger" ? "bollinger" : id === "bollingerupper" ? "bollingerUpper" : "bollingerLower";
+    if (args.length === 0) return { id: normalised } as IndicatorSelector;
+    if (args.length !== 2) throw new Error(`指标 "${raw}" 需要 0 或 2 个参数（period/deviation），例如 "bollinger:20/2"`);
+    const [period, deviation] = args.map(Number);
+    if (period === undefined || deviation === undefined || !Number.isInteger(period) || period <= 0 || !Number.isFinite(deviation) || deviation <= 0) {
+      throw new Error(`指标 "${raw}" 的参数不合法（period 正整数、deviation 正数）`);
+    }
+    return { id: normalised, period, deviation } as IndicatorSelector;
+  }
+
+  if (id === "supertrend") {
+    if (args.length === 0) return { id: "supertrend" };
+    if (args.length !== 2) throw new Error(`指标 "${raw}" 需要 0 或 2 个参数（period/multiplier），例如 "supertrend:10/3"`);
+    const [period, multiplier] = args.map(Number);
+    if (period === undefined || multiplier === undefined || !Number.isInteger(period) || period <= 0 || !Number.isFinite(multiplier) || multiplier <= 0) {
+      throw new Error(`指标 "${raw}" 的参数不合法（period 正整数、multiplier 正数）`);
+    }
+    return { id: "supertrend", period, multiplier };
   }
 
   if (id === "macd") {
