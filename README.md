@@ -12,6 +12,23 @@
 - **Node.js ≥ 20**，以及 **pnpm**（`dsh plugin` 内部调用 pnpm）。
 - 能访问 Binance 现货公共接口（`api.binance.com` 等）。
 
+## 一键启动（推荐给不熟悉命令行的同事）
+
+把这三样放在**同一个文件夹**里发给同事：
+
+- `start.command`（macOS 双击）或 `start.sh`（终端）
+- `dsh-trading-agent-0.1.0.tgz`（预构建插件；脚本会自动优先使用同目录的 tgz，无需构建）
+
+macOS：双击 `start.command`。首次可能被 Gatekeeper 拦下——右键 → 打开，或在「系统设置 → 隐私与安全性」里允许；也可执行 `xattr -d com.apple.quarantine start.command`。终端用户直接 `bash start.sh`。
+
+脚本会自动完成：识别平台 → 缺 Node 就下载本地 Node（≥20）→ 缺 pnpm 就装到 `~/.dsh-trading-agent` → 缺 DSH 就装 `@deepseek-ai/dsh@0.1.6-alpha.2` → 把插件加入 `web` profile → 启动 DSH 并打开浏览器。**全程不需要 sudo，也不改系统安装**（缺什么就装到 `~/.dsh-trading-agent` 下自用）。
+
+常用参数：`--profile desktop`（桌面端）、`--spec github:johnny-ggao/trading-agent`（改用 GitHub 源）、`--no-start`、`--toolchain-only`、`--dry-run`、`--help`。
+
+要求：能访问 npm 与 nodejs.org；首次启动会初始化 profile 并下载 DSH 依赖，需要几分钟。DSH 还需要一个**模型 provider / API key** 才能对话（首次 onboarding 里配置）；插件出图不需要 key。
+
+> Windows 请在 WSL 或 Git Bash 下运行 `start.sh`；暂未提供原生 PowerShell 版本。
+
 ## 安装
 
 > ⚠️ **本插件尚未发布到 npm**，所以 `dsh plugin add dsh-trading-agent` **不会**装上它。请用下面三种方式之一。
@@ -126,6 +143,7 @@ pnpm run typecheck
 - `src/analysis/`：模型调用层（Jev 置信度校准的纯逻辑与官方 SDK 适配）。
 - `src/client/`：客户端半边（图卡、侧栏 tab、自动打开、配置页）。
 - `src/shared/`、`src/skill/`、`assets/`：契约、skill 与正文。
+- `start.sh` / `start.command`：一键启动脚本（缺 Node/pnpm/DSH 时自动本地补齐）。
 
 ## 重载开发
 
