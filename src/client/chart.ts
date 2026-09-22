@@ -11,6 +11,7 @@ import {
 } from "lightweight-charts";
 import type { ChartSpec } from "../shared/chartSpec";
 import { toLightweightPanes } from "./toSeries";
+import { paneStretchFactors } from "./paneLayout";
 import {
   applyChange,
   currentTarget,
@@ -213,9 +214,6 @@ function TradingChart(props: { spec: ChartSpec; onControlChange?: (target: Contr
   const containerRef = React.useRef<HTMLDivElement | null>(null);
   const chartRef = React.useRef<IChartApi | null>(null);
   const legend = React.useMemo(() => buildLegend(props.spec), [props.spec]);
-  // 窗格越多整体越高，主图通过 stretchFactor 占更大比例。
-  const paneCount = Math.max(1, props.spec.panes.length);
-  const height = paneCount <= 1 ? 360 : 300 + paneCount * 80;
 
   React.useEffect(() => {
     const container = containerRef.current;
@@ -224,8 +222,9 @@ function TradingChart(props: { spec: ChartSpec; onControlChange?: (target: Contr
     // 跟随当前主题：默认 textColor 近乎黑色，深色主题下坐标轴标签会"隐形"。
     const textColor = getComputedStyle(container).color || "#d1d4dc";
     const chart = createChart(container, {
+      // autoSize 交给 lightweight-charts 跟随容器尺寸；容器由 flex 铺满 tab，
+      // 所以这里不再给固定像素高度（否则切 tab / 拖侧栏宽度时不会跟着变）。
       autoSize: true,
-      height,
       layout: {
         background: { color: "transparent" },
         textColor,
@@ -272,26 +271,28 @@ function TradingChart(props: { spec: ChartSpec; onControlChange?: (target: Contr
         }
       }
     });
-    chart.panes().forEach((pane, index) => pane.setStretchFactor(index === 0 ? 2 : 1));
+    const factors = paneStretchFactors(props.spec.panes.length);
+    chart.panes().forEach((pane, index) => pane.setStretchFactor(factors[index] ?? 1));
 
     return () => {
       chart.remove();
       chartRef.current = null;
     };
-  }, [props.spec, height]);
+  }, [props.spec]);
 
+  // 铺满 tab：根容器 flex 纵向撑开，图表区 flex:1 吃掉剩余高度（minHeight 0 允许收缩）。
   // 工具栏在图外；图例只相对图表区域定位，避免压到工具栏。
   return React.createElement(
     "div",
-    { style: { width: "100%" } },
+    { style: { display: "flex", flex: "1 1 auto", flexDirection: "column", width: "100%", height: "100%", minHeight: 0 } },
     React.createElement(ControlBar, { spec: props.spec, onControlChange: props.onControlChange }),
     React.createElement(
       "div",
-      { style: { position: "relative", width: "100%" } },
+      { style: { position: "relative", flex: "1 1 auto", width: "100%", minHeight: "320px" } },
       React.createElement("div", {
         ref: containerRef,
         "data-trading-chart": "1",
-        style: { width: "100%", height: `${height}px` },
+        style: { width: "100%", height: "100%" },
       }),
       React.createElement(LegendOverlay, { legend, notes: props.spec.notes ?? [] }),
     ),
@@ -333,7 +334,21 @@ export function ChartCard(props: { spec: ChartSpec }): React.ReactElement {
 
   return React.createElement(
     "div",
-    { "data-trading-card": "1", style: { width: "100%", margin: "8px 0" } },
+    {
+      "data-trading-card": "1",
+      // 行情图 tab 里这张卡就是整页：铺满宽高，不再留消息卡式的上下外边距。
+      style: {
+        // 与 DSH 内置 tab 正文的根样式同一惯例（Browser.module.css 的 .root）：
+        // 宿主给的是确定高度的 flex 容器，这样才谈得上"铺满整页"。
+        display: "flex",
+        flex: "1 1 auto",
+        flexDirection: "column",
+        width: "100%",
+        height: "100%",
+        minHeight: 0,
+        overflow: "hidden",
+      },
+    },
     React.createElement(TradingChart, { spec, onControlChange: applyControl }),
     pending ? React.createElement("div", { "data-trading-pending": "1", style: STATUS_STYLE }, "载入中…") : null,
     error !== null ? React.createElement("div", { "data-trading-error": "1", style: STATUS_STYLE }, error) : null,
