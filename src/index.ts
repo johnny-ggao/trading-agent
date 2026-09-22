@@ -12,6 +12,7 @@ import {
   TypeSafeConfidenceScorer,
 } from "./analysis/typesafe";
 import { describeIndicators } from "./market/intent";
+import { buildAnchor } from "./market/anchor";
 import { buildMarketView, chartRequestFromQuery, loadChart, type MarketView } from "./market/request";
 import { resolveSymbol } from "./market/symbol";
 import { resolveInterval } from "./market/timeframe";
@@ -195,29 +196,25 @@ export function apply(ctx: HostContext, config: Config): void {
             symbol: { type: "string", required: true },
             interval: { type: "string", required: true },
             bars: { type: "number", required: true },
-            indicators: { type: "string", required: true },
-            candidates: { type: "json", required: true },
-            ruleSignals: { type: "json", required: true },
+            formingBars: { type: "number", required: true },
+            lastClose: { type: "number", required: true },
+            lastClosedBar: { type: "number" },
             context: { type: "json", required: true },
-            resonance: { type: "json", required: true },
+            hint: { type: "string", required: true },
             chartSpec: { type: "json", required: true },
           },
         },
         render: (_args, value) => [
           {
             type: "text",
-            text: `已渲染 ${value.symbol} / ${value.interval} 的 ${value.bars} 根 K 线（Binance 现货）；指标：${value.indicators}。`,
+            text: `已渲染 ${value.symbol} / ${value.interval} 的 ${value.bars} 根 K 线（Binance 现货），`
+              + `已收盘到 bar ${String(value.lastClosedBar ?? "?")}，最新收盘价 ${String(value.lastClose)}。`,
           },
           {
             type: "text",
-            text: "机械数据（确定性计算，未作判断）："
-              + JSON.stringify({
-                candidates: value.candidates,
-                ruleSignals: value.ruleSignals,
-                context: value.context,
-                resonance: value.resonance,
-              }),
+            text: `市场状态（机械事实，非结论）：${JSON.stringify(value.context)}`,
           },
+          { type: "text", text: String(value.hint) },
         ],
         presentationMeta: (_args, value) => value.chartSpec,
       },
@@ -236,15 +233,16 @@ export function apply(ctx: HostContext, config: Config): void {
           indicators: describeIndicators(view.resolved.indicators),
           at: Date.now(),
         });
+        const anchor = buildAnchor(view);
         return {
-          symbol: view.spec.symbol,
-          interval: view.resolved.interval,
-          bars: view.bars,
-          indicators: describeIndicators(view.resolved.indicators),
-          candidates: view.candidates as unknown as Json,
-          ruleSignals: view.ruleSignals as unknown as Json,
-          context: view.context as unknown as Json,
-          resonance: view.resonance as unknown as Json,
+          symbol: anchor.symbol,
+          interval: anchor.interval,
+          bars: anchor.bars,
+          formingBars: anchor.formingBars,
+          lastClose: anchor.lastClose,
+          ...(anchor.lastClosedBar === undefined ? {} : { lastClosedBar: anchor.lastClosedBar }),
+          context: anchor.context as unknown as Json,
+          hint: anchor.hint,
           chartSpec: view.spec as unknown as Json,
         };
       },

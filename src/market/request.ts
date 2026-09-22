@@ -27,6 +27,10 @@ export interface MarketView extends LoadedChart {
   resonance: TimeframeResonance;
   /** 尾部形成中 K 线的根数：0 或 1；它们不参与任何机械判断。 */
   formingBars: number;
+  /** 最后一根**已收盘** K 线的开盘时间（秒）；回答里引用数值时的锚点。 */
+  lastClosedBar?: number;
+  /** 本次取数的服务器时刻（毫秒），用于说明数据有多新。 */
+  fetchedAt: number;
 }
 
 /** 需要「现在时刻」的调用点可注入它（测试用固定值复现收盘边界）。 */
@@ -149,7 +153,14 @@ export async function buildMarketView(
     computeMarketContext(higherClosure.closed, resolved.indicators),
     context,
   );
-  return { ...loaded, context, resonance, formingBars: closure.formingBars };
+  return {
+    ...loaded,
+    context,
+    resonance,
+    formingBars: closure.formingBars,
+    ...(closure.lastClosed === undefined ? {} : { lastClosedBar: closure.lastClosed.time }),
+    fetchedAt: now,
+  };
 }
 
 /** 图卡控件把目标状态放在 URL 查询串里；缺省字段留给默认填充。 */
