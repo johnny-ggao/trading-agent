@@ -234,6 +234,16 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           description: "要与当前周期比较方向的另一周期（15m/1h/4h/1d/1w）；不传则不比较。"
             + "看日线要对周线就传 1w，看 15m 要对 1h 就传 1h。",
         },
+        levelsPerSide: {
+          type: "number",
+          description: "图上每侧最多画几条支撑/阻力（默认 3，上限 10）。图要清爽就调小，"
+            + "要让用户一眼看到更多关键位就调大；分析用的价位数量由 trading_levels 决定，不受这个影响。",
+        },
+        levelKinds: {
+          type: "array",
+          items: { type: "string" },
+          description: "图上画哪几类价位：support / resistance / fib；缺省只画支撑阻力（斐波那契默认不上图）。",
+        },
       },
       output: {
         schema: CHART_OUTPUT_SCHEMA,
@@ -251,6 +261,8 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
             bollinger: args.bollinger,
             kdj: args.kdj,
             atr: args.atr,
+            levelsPerSide: args.levelsPerSide,
+            levelKinds: args.levelKinds,
           });
         } catch (error) {
           if (error instanceof InvalidChartArgsError) {

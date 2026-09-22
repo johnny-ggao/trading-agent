@@ -89,3 +89,25 @@ describe("出图入参校验（与按需路径同一姿态：不合法就明确�
     expect(r.indicators.rsi).toBe(21);
   });
 });
+
+describe("图面价位入参（与价位工具同一姿态：不合法就明确报错）", () => {
+  it("接受每侧条数与类别", () => {
+    const r = resolveChartRequest({ levelsPerSide: 5, levelKinds: ["support", "fib"] });
+    expect(r.levelOptions).toEqual({ perSide: 5, kinds: ["support", "fib"] });
+  });
+
+  it("缺省时不带选项（由 presentation 用默认值）", () => {
+    expect(resolveChartRequest({}).levelOptions).toEqual({});
+  });
+
+  it("每侧条数必须是正整数且不超上限", () => {
+    for (const bad of [0, -1, 1.5, 11]) {
+      expect(() => resolveChartRequest({ levelsPerSide: bad })).toThrow(/levelsPerSide/);
+    }
+  });
+
+  it("类别不能为空、不能拼错", () => {
+    expect(() => resolveChartRequest({ levelKinds: [] })).toThrow(/levelKinds/);
+    expect(() => resolveChartRequest({ levelKinds: ["suport"] })).toThrow(/suport/);
+  });
+});

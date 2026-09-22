@@ -101,3 +101,42 @@ describe("图与答案同源（共用 candidates.ts 的单一聚类实现）", (
     expect(priced.every((level) => level.pivotTimes.length > 0)).toBe(true);
   });
 });
+
+describe("图面价位由参数决定（默认仍是每侧 3 条、只画支撑阻力）", () => {
+  /** 造一批价位：支撑 4 条、阻力 4 条、斐波那契 2 条。 */
+  const rich: ChartCandidates = {
+    pivots: [],
+    lastPrice: 100,
+    levels: [
+      { kind: "support", price: 95, label: "S", touches: 1, distancePct: -5, pivotTimes: [1] },
+      { kind: "support", price: 90, label: "S", touches: 1, distancePct: -10, pivotTimes: [2] },
+      { kind: "support", price: 85, label: "S", touches: 1, distancePct: -15, pivotTimes: [3] },
+      { kind: "support", price: 80, label: "S", touches: 1, distancePct: -20, pivotTimes: [4] },
+      { kind: "resistance", price: 105, label: "R", touches: 1, distancePct: 5, pivotTimes: [5] },
+      { kind: "resistance", price: 110, label: "R", touches: 1, distancePct: 10, pivotTimes: [6] },
+      { kind: "resistance", price: 115, label: "R", touches: 1, distancePct: 15, pivotTimes: [7] },
+      { kind: "resistance", price: 120, label: "R", touches: 1, distancePct: 20, pivotTimes: [8] },
+      { kind: "fib", price: 97, label: "Fib 23.6%", touches: 0, distancePct: -3, pivotTimes: [] },
+      { kind: "fib", price: 92, label: "Fib 38.2%", touches: 0, distancePct: -8, pivotTimes: [] },
+    ],
+  };
+
+  it("缺省：每侧 3 条、不含斐波那契（行为不变）", () => {
+    const { levels } = buildChartPresentation(rich, []);
+    expect(levels.map((level) => level.price)).toEqual([95, 90, 85, 105, 110, 115]);
+    expect(levels.some((level) => level.kind === "fib")).toBe(false);
+  });
+
+  it("可指定每侧条数", () => {
+    const { levels } = buildChartPresentation(rich, [], { perSide: 1 });
+    expect(levels.map((level) => level.price)).toEqual([95, 105]);
+  });
+
+  it("可指定只画某一类，且斐波那契能按要求画上", () => {
+    const supportOnly = buildChartPresentation(rich, [], { kinds: ["support"] });
+    expect(supportOnly.levels.every((level) => level.kind === "support")).toBe(true);
+    const withFib = buildChartPresentation(rich, [], { kinds: ["resistance", "fib"] });
+    expect(withFib.levels.filter((level) => level.kind === "fib").length).toBe(2);
+    expect(withFib.levels.some((level) => level.kind === "support")).toBe(false);
+  });
+});

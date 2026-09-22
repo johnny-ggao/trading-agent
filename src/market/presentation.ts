@@ -13,8 +13,21 @@ export const LEVEL_COLORS = {
   fib: "#787b86",
 } as const;
 
-/** 现价上下各最多画几条支撑/阻力，避免密集窗口糊成一片。 */
+/**
+ * **默认**每侧画几条支撑/阻力（避免密集窗口糊成一片）。
+ *
+ * 与按需路径的 `DEFAULT_LEVELS_PER_SIDE`（facts.ts，默认 5）是两个**默认值**，但共用
+ * 同一个取舍策略 `nearestPerSide`——图要清爽、分析要多给是刻意的差别，策略本身不分叉。
+ */
 export const MAX_LEVELS_PER_SIDE = 3;
+
+/** 图上价位的可选设置（`trading_chart` 的渲染参数）。 */
+export interface ChartLevelOptions {
+  /** 每侧最多画几条支撑/阻力；缺省 {@link MAX_LEVELS_PER_SIDE}。 */
+  perSide?: number;
+  /** 画哪几类；缺省只画支撑/阻力（斐波那契不上图）。 */
+  kinds?: readonly ("support" | "resistance" | "fib")[];
+}
 
 /** 图上可渲染的机械层：价位线与说明文字。 */
 export interface ChartPresentation {
@@ -39,9 +52,16 @@ export interface ChartPresentation {
 export function buildChartPresentation(
   candidates: ChartCandidates,
   _ruleSignals: RuleSignal[],
+  options: ChartLevelOptions = {},
 ): ChartPresentation {
+  const perSide = options.perSide ?? MAX_LEVELS_PER_SIDE;
+  const wanted = new Set(options.kinds ?? (["support", "resistance"] as const));
   // 与送给 Jev 的证据共用同一取舍策略（nearestPerSide），避免"图上画的"与"证据含的"分叉。
-  const shown = nearestPerSide(candidates.levels, candidates.lastPrice, MAX_LEVELS_PER_SIDE);
+  const shown = [
+    ...nearestPerSide(candidates.levels, candidates.lastPrice, perSide)
+      .filter((level) => wanted.has(level.kind)),
+    ...(wanted.has("fib") ? candidates.levels.filter((level) => level.kind === "fib") : []),
+  ];
   const levels: ChartLevel[] = shown.map((level) => ({
     price: level.price,
     label: level.label,

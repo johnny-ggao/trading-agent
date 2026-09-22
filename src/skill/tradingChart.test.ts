@@ -277,3 +277,18 @@ describe("skill v3：共振的周期对必须两处一致", () => {
     expect(body).toContain("跟自己比");
   });
 });
+
+describe("skill v3：图面内容可配（指标不默认画）", () => {
+  const body = tradingChartSkill.content;
+
+  it("说明指标不默认画、由开关控制", () => {
+    expect(body).toContain("指标**不默认画**");
+    expect(body).toContain("开关");
+  });
+
+  it("给出价位数量与类别的参数", () => {
+    expect(body).toContain("levelsPerSide");
+    expect(body).toContain("levelKinds");
+    expect(body).toContain("默认每侧 3 条");
+  });
+});

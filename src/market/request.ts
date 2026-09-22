@@ -111,7 +111,7 @@ function assemble(resolved: ResolvedChartRequest, closure: CandleClosure): Loade
   const closedIndicators = computeIndicators(closed, resolved.indicators);
   const candidates = computeCandidates(closed, seriesMaValues(closedIndicators));
   const ruleSignals = computeRuleSignals(closed, seriesSignalInputs(closedIndicators));
-  const presentation = buildChartPresentation(candidates, ruleSignals);
+  const presentation = buildChartPresentation(candidates, ruleSignals, resolved.levelOptions);
   const withPresentation: ChartSpec = {
     ...spec,
     ...(presentation.markers.length > 0 ? { markers: presentation.markers } : {}),
@@ -167,7 +167,18 @@ export function chartRequestFromQuery(query: URLSearchParams): ChartRequest {
     bollinger: query.get("bollinger") === "true",
     kdj: query.get("kdj") === "true",
     atr: query.get("atr") === "true",
+    levelsPerSide: parseNumber(query.get("levelsPerSide")),
+    ...(parseStringList(query.get("levelKinds")) === undefined
+      ? {}
+      : { levelKinds: parseStringList(query.get("levelKinds")) }),
   };
+}
+
+/** 逗号分隔的字符串列表；空则 undefined。 */
+function parseStringList(value: string | null): string[] | undefined {
+  if (value === null || value.trim() === "") return undefined;
+  const list = value.split(",").map((part) => part.trim()).filter((part) => part !== "");
+  return list.length > 0 ? list : undefined;
 }
 
 function parseNumber(value: string | null): number | undefined {
