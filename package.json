@@ -1,7 +1,7 @@
 {
   "name": "dsh-trading-agent",
   "version": "0.1.0",
-  "description": "DSH 插件：在对话中内联渲染加密行情技术分析图表",
+  "description": "DSH 插件：在右侧栏原生自定义 tab 中渲染加密行情技术分析图表",
   "keywords": ["dsh", "dsh-plugin", "trading", "crypto", "technical-analysis", "lightweight-charts"],
   "license": "MIT",
   "repository": {

@@ -62,7 +62,7 @@ export function apply(ctx: HostContext): void {
     defineTool({
       name: TOOL_NAME,
       description:
-        "画一张加密行情技术分析图并渲染到对话中。数据来自 Binance 现货。"
+        "画一张加密行情技术分析图，并自动在右侧栏的行情图 tab 中打开。数据来自 Binance 现货。"
         + "周期可传 15m/1h/4h/1d 或时间词（今天/这周/这月/短线）；可覆盖均线周期（ma），"
         + "RSI 默认关闭（传 rsi 周期即显示），布林带/KDJ/ATR 也按需开启。",
       parameters: {

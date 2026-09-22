@@ -1,6 +1,6 @@
 # dsh-trading-agent
 
-在 DSH 对话中内联渲染加密行情技术分析图表的双半边插件（宿主 + 客户端）。
+把加密行情技术分析图表渲染到 DSH **右侧栏原生自定义 tab** 的双半边插件（宿主 + 客户端）。
 
 ## 安装
 
@@ -8,7 +8,7 @@
 dsh plugin --profile web add dsh-trading-agent
 ```
 
-安装后**重启 `dsh web`**（bundle 成员变化需要重启）。随后在对话里让 agent 调用 `trading_chart` 即可看到 K 线图卡。
+安装后**重启 `dsh web`**（bundle 成员变化需要重启）。随后在对话里让 agent 调用 `trading_chart`，图表会自动在右侧栏的「行情图」tab 中打开（见 [ADR-0006](docs/adr/0006-sidebar-native-chart-tab.md)）。
 
 开发期从本仓库直接安装：
 

@@ -1,6 +1,6 @@
 # trading-agent
 
-一个 DSH 原生 agent：分析加密市场的技术面（以 Binance 现货为主的历史行情主干，Hyperliquid 作为补充的永续数据源），并把图表直接渲染在对话中。
+一个 DSH 原生 agent：分析加密市场的技术面（以 Binance 现货为主的历史行情主干，Hyperliquid 作为补充的永续数据源），并把图表渲染在会话右侧栏的行情图 tab 中（见 ADR-0006）。
 
 ## 词汇表（Language）
 
