@@ -4,6 +4,7 @@
  * 见 `contract.ts` 的说明：这三样以前分散在 `src/index.ts` 的注册块里，漏改不会有编译错误。
  */
 import type { IndicatorFactsResponse } from "../market/facts";
+import { canonicalSpec, INDICATOR_CATALOG, type IndicatorId } from "../market/indicatorCatalog";
 import { failurePayload, type JsonSchema, type SchemaValue, type TextBlock } from "./contract";
 
 export const INDICATOR_OUTPUT_SCHEMA = {
@@ -24,6 +25,17 @@ export const INDICATOR_OUTPUT_SCHEMA = {
 
 /** 由 schema 推断出的 payload 类型——类型与契约同源。 */
 export type IndicatorToolValue = SchemaValue<typeof INDICATOR_OUTPUT_SCHEMA>;
+
+/**
+ * 给模型的 id 清单：**由指标清单生成**，不手写。
+ *
+ * 此前工具描述里手写了 6 个 id（而清单已有 13 个），模型因此不知道 vwma/mfi/adx/obv/
+ * 布林三轨/supertrend 可用——加指标时忘记同步描述不会有任何报错。
+ */
+export function indicatorVocabularyNote(): string {
+  const specs = (Object.keys(INDICATOR_CATALOG) as IndicatorId[]).map(canonicalSpec);
+  return `indicators 用紧凑字符串，id 只能取这些：${specs.join("、")}。`;
+}
 
 /** 领域结果 → 给模型的 payload（成功与失败同一形状）。 */
 export function indicatorPayload(result: IndicatorFactsResponse): IndicatorToolValue {

@@ -26,7 +26,7 @@ import { requestDerivatives, requestIndicatorFacts, requestLevelFacts, requestRe
 import { HyperliquidProvider } from "./market/hyperliquid";
 import { parseIndicatorSelectors } from "./market/indicatorSpec";
 import { failurePayload } from "./tools/contract";
-import { INDICATOR_OUTPUT_SCHEMA, indicatorBlocks, indicatorPayload } from "./tools/indicator";
+import { INDICATOR_OUTPUT_SCHEMA, indicatorBlocks, indicatorPayload, indicatorVocabularyNote } from "./tools/indicator";
 import { CHART_OUTPUT_SCHEMA, chartBlocks, chartPresentationMeta } from "./tools/chart";
 import { LEVELS_OUTPUT_SCHEMA, levelsBlocks } from "./tools/levels";
 import { DERIVATIVES_OUTPUT_SCHEMA, derivativesBlocks } from "./tools/derivatives";
@@ -297,7 +297,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         "按需计算技术指标值（ADR-0008：代码算、你选）。只算你点名的指标，返回每个指标的"
         + "归一化参数、需要的预热根数、最新值与最近若干个值。**只用已收盘 K 线**，"
         + "并回传 grounding（最后一根已收盘 bar、用了多少根）。"
-        + "indicators 用紧凑字符串：\"ma:50\"、\"ema:20\"、\"rsi:14\"、\"atr:14\"、\"macd:12/26/9\"、\"macd\"。"
+        + indicatorVocabularyNote()
         + FETCH_CAP_NOTE
         + "每轮建议不超过 8 项且互相互补；需要更多可以再发一轮。"
         + "数据不足以算出所请求的指标时返回 ok=false 并说明缺多少根，不要基于不足窗口下结论。",

@@ -6,6 +6,12 @@
  * `trading_levels` / （后续）`trading_derivatives` 取。
  */
 import type { MarketView } from "./request";
+import {
+  CONFIDENCE_TOOL_NAME,
+  DERIVATIVES_TOOL_NAME,
+  INDICATOR_TOOL_NAME,
+  LEVELS_TOOL_NAME,
+} from "../shared/tool";
 
 /** 锚点内容：刻意保持小而易读。 */
 export interface ChartAnchor {
@@ -29,9 +35,15 @@ export interface ChartAnchor {
   hint: string;
 }
 
+/**
+ * 指路：**由工具名常量拼出**，不手写——否则加了工具而忘了改这里，模型就不知道有新工具。
+ * 只有取数/校准类工具会出现在这里；本工具（出图）不自我指涉。
+ */
 const HINT =
-  "这只是定位与市场状态；需要指标值时用 trading_indicator（可指定周期与参数，可再发一轮），"
-  + "需要支撑阻力/斐波那契/枢轴时用 trading_levels。";
+  `这只是定位与市场状态；需要指标值时用 ${INDICATOR_TOOL_NAME}（可指定周期、参数与 lookback，可再发一轮），`
+  + `需要支撑阻力/斐波那契/枢轴时用 ${LEVELS_TOOL_NAME}，`
+  + `需要资金费/OI 等永续数据时用 ${DERIVATIVES_TOOL_NAME}，`
+  + `形成方向性结论后用 ${CONFIDENCE_TOOL_NAME} 校准置信度。`;
 
 /** 由 MarketView 构造锚点。 */
 export function buildAnchor(view: MarketView): ChartAnchor {
