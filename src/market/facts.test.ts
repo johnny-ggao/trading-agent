@@ -206,6 +206,16 @@ describe("requestDerivatives：资金费/OI/预言机价与 HL 独有项", () =>
     expect(Object.keys(result.snapshot).sort()).toEqual(["funding", "fundingIntervalHours", "source", "symbol"]);
   });
 
+  it("响应里的 symbol 是币种名（与查询口径一致）", async () => {
+    const { HyperliquidProvider } = await import("./hyperliquid");
+    const provider = new HyperliquidProvider({
+      fetch: (async () => ({ status: 200, headers: { get: () => null }, json: async () => metaCtx })) as never,
+    });
+    const result = await requestDerivatives({ symbol: "btcusdt", fields: ["funding"] }, { hyperliquid: () => provider });
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.symbol).toBe("BTC");
+  });
+
   it("未上市的币种明确报错，不静默", async () => {
     const { HyperliquidProvider } = await import("./hyperliquid");
     const provider = new HyperliquidProvider({

@@ -13,7 +13,7 @@ import { computeLevelFacts, type LevelFact, type LevelKind, type LevelPivot } fr
 import { computeMarketContext } from "./context";
 import { computeResonance, higherInterval } from "./multiTimeframe";
 import { resolveInterval, type Interval } from "./timeframe";
-import { resolveSymbol } from "./symbol";
+import { baseCoin, resolveSymbol } from "./symbol";
 import type { Candle, MarketDataProvider } from "./types";
 
 /** 每次响应都带的"数据有多新、用了哪些 K 线、来自哪里"。 */
@@ -400,7 +400,8 @@ export async function requestDerivatives(
     ? DEFAULT_DERIVATIVE_FIELDS
     : DERIVATIVE_FIELDS.filter((field) => input.fields!.includes(field));
   const provider = sources.hyperliquid();
-  const coin = input.symbol.trim().toUpperCase();
+  // Hyperliquid 用**币种名**（BTC）而非现货对（BTCUSDT）；统一在这里归一，响应里也回币种名。
+  const coin = baseCoin(input.symbol);
 
   let snapshot: Record<string, unknown>;
   try {

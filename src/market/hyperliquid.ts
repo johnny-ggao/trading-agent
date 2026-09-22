@@ -8,6 +8,7 @@
  *
  * 公开读无需 key；事实见 docs/research/crypto-data-apis.md 与 hyperliquid-extra-data.md。
  */
+import { baseCoin } from "./symbol";
 import type {
   Candle,
   CandleBatch,
@@ -106,7 +107,7 @@ export class HyperliquidProvider implements MarketDataProvider {
     const startTime = endTime - Math.min(requested, HL_RETENTION_LIMIT) * intervalMs(hlIv);
     const raw = await this.post({
       type: "candleSnapshot",
-      req: { coin: symbol.trim().toUpperCase(), interval: hlIv, startTime, endTime },
+      req: { coin: baseCoin(symbol), interval: hlIv, startTime, endTime },
     });
     const candles = parseCandles(raw);
     return this.withRetention(symbol, hlIv, requested, startTime, candles);
@@ -141,7 +142,7 @@ export class HyperliquidProvider implements MarketDataProvider {
    * Binance 现货源给不了这些。
    */
   async fetchDerivatives(symbol: string): Promise<DerivativesSnapshot> {
-    const coin = symbol.trim().toUpperCase();
+    const coin = baseCoin(symbol);
     const raw = await this.post({ type: "metaAndAssetCtxs" });
     return parseAssetContext(coin, raw);
   }
@@ -152,7 +153,7 @@ export class HyperliquidProvider implements MarketDataProvider {
    * "多头拥挤集中在哪个场所"的直接依据。没有该币种时返回空数组。
    */
   async fetchPredictedFunding(symbol: string): Promise<PredictedFunding[]> {
-    const coin = symbol.trim().toUpperCase();
+    const coin = baseCoin(symbol);
     const raw = await this.post({ type: "predictedFundings" });
     return parsePredictedFunding(coin, raw);
   }

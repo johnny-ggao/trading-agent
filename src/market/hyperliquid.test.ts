@@ -244,3 +244,28 @@ describe("OI 上限清单", () => {
     await expect(provider.fetchOpenInterestCap()).rejects.toThrow(/perpsAtOpenInterestCap/);
   });
 });
+
+describe("接受任意写法：币种名与现货对都能用", () => {
+  const start = 1_700_000_000_000;
+
+  it("fetchDerivatives 接受 BTCUSDT（skill 推荐的写法）", async () => {
+    const { fetch } = fakeFetch(metaAndAssetCtxs());
+    const provider = new HyperliquidProvider({ fetch });
+    const snapshot = await provider.fetchDerivatives("BTCUSDT");
+    expect(snapshot.symbol).toBe("BTC");
+    expect(snapshot.markPrice).toBe(14.3161);
+  });
+
+  it("fetchPredictedFunding 接受 btcusdt", async () => {
+    const { fetch } = fakeFetch([["BTC", [["HlPerp", { fundingRate: "0.00001", nextFundingTime: 1 }]]]]);
+    const provider = new HyperliquidProvider({ fetch });
+    expect((await provider.fetchPredictedFunding("btcusdt")).map((r) => r.venue)).toEqual(["HlPerp"]);
+  });
+
+  it("K 线请求体里发的是币种名，不是交易对", async () => {
+    const { fetch, bodies } = fakeFetch(klines(1, start));
+    const provider = new HyperliquidProvider({ fetch });
+    await provider.fetchCandles("BTCUSDT", "1h", { limit: 1 });
+    expect((JSON.parse(bodies[0]!) as { req: { coin: string } }).req.coin).toBe("BTC");
+  });
+});
