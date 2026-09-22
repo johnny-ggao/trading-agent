@@ -10,7 +10,8 @@ export const SKILL_NAME = "trading-chart";
 export const SKILL_DESCRIPTION =
   "当用户想了解某个加密资产（币种或交易对）的行情或技术面时使用：走势、K 线、"
   + "均线与 MACD/RSI/布林带/KDJ/ATR 等指标、支撑阻力，或要求画一张行情图。"
-  + "它规定 trading_chart 的调用时机、时间词与指标参数怎么填，以及如何在回答里声明所用默认值。";
+  + "它规定 trading_chart 的调用时机、时间词与指标参数怎么填，如何用 trading_confidence 校准置信度，"
+  + "以及如何在回答里声明所用默认值。";
 
 /** 注册表只用到 register，本地声明以保持零额外依赖。 */
 export interface SkillRegistryLike {

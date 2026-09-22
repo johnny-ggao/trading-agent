@@ -13,12 +13,19 @@ import {
   turnFromAddress,
   type UseChatLike,
 } from "./turn";
+import {
+  CONFIG_NAMESPACE,
+  CONFIG_ROW_KEY,
+  TradingAgentConfigCard,
+  type CredentialsRemoteLike,
+  type SettingsScopeLike,
+} from "./config";
 
 /**
- * 所需客户端服务：槽位注册表、侧栏 tab 类型注册表、侧栏导航控制器。
- * 后两者由 @deepseek-ai/dsh-client-ui-sidebar-right 提供（dsh-web-app 内置）。
+ * 所需客户端服务：槽位注册表、侧栏 tab 类型注册表、侧栏导航控制器，
+ * 以及插件管理页行配置所需的 settings 作用域与凭据远程。
  */
-export const inject = ["slots", "sidebarRightTabs", "sidebarRight"];
+export const inject = ["slots", "sidebarRightTabs", "sidebarRight", "settingsScope", "remote", "remote.credentials"];
 
 /** 侧栏资源类型的 kind/类型段（同时也是自动打开认领的地址前缀段）。 */
 const TAB_KIND = "trading-chart";
@@ -60,10 +67,21 @@ interface SidebarRightService {
   openResourceIn(sessionId: string, address: string, options?: { params?: unknown }): void;
 }
 
+interface SettingsScopeBinderLike {
+  bind<T>(spec: { namespace: string }): SettingsScopeLike<T>;
+}
+
+interface RemoteServiceLike {
+  credentials: CredentialsRemoteLike;
+  $on(event: string, listener: (ref: string) => void): () => void;
+}
+
 interface ClientContext {
   slots: SlotsService;
   sidebarRightTabs: SidebarRightTabsService;
   sidebarRight: SidebarRightService;
+  settingsScope: SettingsScopeBinderLike;
+  remote: RemoteServiceLike;
   effect(callback: () => unknown, label?: string): unknown;
 }
 
@@ -251,5 +269,21 @@ export function apply(ctx: ClientContext): void {
       }),
     },
     ChartAutoOpener,
+  ));
+
+  // 插件管理页里本行（<包名>#<行 id>）的配置页：填 TypeSafe API key（写入 credentials 域）。
+  const configScope = ctx.settingsScope.bind({ namespace: CONFIG_NAMESPACE });
+  const configFace = {
+    scope: configScope,
+    credentials: ctx.remote.credentials,
+    subscribeCredentialUpdates: (listener: (ref: string) => void) => ctx.remote.$on("credentials/reference-updated", listener),
+  };
+  ctx.slots.inject("plugins.row.config", () => ctx.slots.register(
+    {
+      name: "plugins.row.config",
+      key: CONFIG_ROW_KEY,
+      inject: () => configFace,
+    },
+    TradingAgentConfigCard,
   ));
 }

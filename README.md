@@ -18,9 +18,21 @@ dsh plugin --profile web add /Users/johnny/Work/trading-agent
 
 ## 随包 skill
 
-插件附带一个模型可调用的 skill `trading-chart`，由宿主半边在启动时注册。它教模型何时调用 `trading_chart`、时间词如何映射主周期、指标参数怎么填、默认值是什么，以及如何在回答里声明所用默认。
+插件附带一个模型可调用的 skill `trading-chart`，由宿主半边在启动时注册。它教模型何时调用 `trading_chart`、时间词如何映射主周期、指标参数怎么填、默认值是什么，如何用 `trading_confidence` 校准置信度，以及如何在回答里声明所用默认。
 
 正文在 [assets/trading-chart.md](assets/trading-chart.md)；构建时由 esbuild 的 `.md` text loader 内联进 `lib/index.js`，所以改完正文要**重新构建并重启 `dsh web`**。
+
+## 置信度校准（可选）
+
+方向性结论的置信度可以用 TypeSafe 的 [Jev](https://docs.typesafe.ai/)（System One）校准：模型先出图、形成「方向 + 失效位 + 理由」，再调用 `trading_confidence`，宿主把真实机械证据与结论交给 Jev，返回**支持度（含概率分布）**与**校准置信度（0..1 与 高/中/低）**。
+
+**配置 key（普通用户）**：打开侧栏的**「插件」页 → 已安装 → dsh-trading-agent → trading-agent 行的「配置」**，粘贴 TypeSafe API key 并保存。密钥经 credentials 域存储、不会明文回传；保存后热生效，无需重启。（第三方插件不会出现在「设置 → 插件」的官方配置页里，只会在插件管理页的本行配置中。）
+
+**配置 key（高级用户）**：设置环境变量 `TYPESAFE_API_KEY`，或在插件配置里设置 `apiKeyEnv` 指向别的变量名。
+
+保存会给出明确反馈：成功显示「已保存，已生效。」，失败显示宿主的原因。**如果同名环境变量（如 `TYPESAFE_API_KEY`）已经提供了该引用，它属于只读来源，界面写入会被拒绝**——此时直接用环境变量即可，或先移除该变量再在界面保存。
+
+**不配置也能用**：没有 key 或服务不可用时，`trading_confidence` 返回 `ok=false`，模型按自己的判断给出置信度并声明「未经校准」，插件的出图与分析不受影响。事实与边界见 [docs/research/jev-confidence.md](docs/research/jev-confidence.md) 与 [ADR-0007](docs/adr/0007-jev-calibrated-confidence.md)。
 
 ## 开发
 
