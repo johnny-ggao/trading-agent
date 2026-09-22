@@ -4,7 +4,7 @@
 
 **Blocked by:** 07
 
-**Status:** ready-for-agent
+**Status:** done（ADR-0008 全部落地；待定项见文末）
 
 ## 工具契约
 
