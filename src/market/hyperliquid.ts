@@ -146,6 +146,24 @@ export class HyperliquidProvider implements MarketDataProvider {
     return parseAssetContext(coin, raw);
   }
 
+  /**
+   * 跨场所预测资金费（`predictedFundings`）——**Binance 原理上给不了的数据**：
+   * 同一个币在 BinPerp / BybitPerp / HlPerp 等场所的预测资金费并排给出，是判断
+   * "多头拥挤集中在哪个场所"的直接依据。没有该币种时返回空数组。
+   */
+  async fetchPredictedFunding(symbol: string): Promise<PredictedFunding[]> {
+    const coin = symbol.trim().toUpperCase();
+    const raw = await this.post({ type: "predictedFundings" });
+    return parsePredictedFunding(coin, raw);
+  }
+
+  /** OI 已达上限、无法再开新仓的资产清单（HL 独有）。 */
+  async fetchOpenInterestCap(): Promise<string[]> {
+    const raw = await this.post({ type: "perpsAtOpenInterestCap" });
+    if (!Array.isArray(raw)) throw new Error("hyperliquid perpsAtOpenInterestCap: expected an array");
+    return raw.map((coin) => String(coin));
+  }
+
   private async post(body: unknown): Promise<unknown> {
     const response = await this.fetchImpl(`${this.baseUrl}/info`, {
       method: "POST",
@@ -157,6 +175,38 @@ export class HyperliquidProvider implements MarketDataProvider {
     }
     return response.json();
   }
+}
+
+/** 一个场所的预测资金费。 */
+export interface PredictedFunding {
+  venue: string;
+  fundingRate: number;
+  nextFundingTime: number;
+}
+
+/** 解析 `predictedFundings`：[[coin, [[venue, {...}], ...]], ...]。 */
+export function parsePredictedFunding(coin: string, raw: unknown): PredictedFunding[] {
+  if (!Array.isArray(raw)) throw new Error("hyperliquid predictedFundings: expected an array");
+  for (const entry of raw) {
+    if (!Array.isArray(entry) || entry.length < 2) {
+      throw new Error("hyperliquid predictedFundings: malformed entry");
+    }
+    const [name, venues] = entry as [unknown, unknown];
+    if (String(name).toUpperCase() !== coin) continue;
+    if (!Array.isArray(venues)) throw new Error("hyperliquid predictedFundings: malformed venues");
+    return venues.flatMap((pair) => {
+      if (!Array.isArray(pair) || pair.length < 2) return [];
+      const [venue, info] = pair as [unknown, { fundingRate?: string; nextFundingTime?: number }];
+      const rate = Number(info?.fundingRate);
+      if (!Number.isFinite(rate)) return [];
+      return [{
+        venue: String(venue),
+        fundingRate: rate,
+        nextFundingTime: Number(info?.nextFundingTime ?? 0),
+      }];
+    });
+  }
+  return [];
 }
 
 function intervalMs(interval: string): number {

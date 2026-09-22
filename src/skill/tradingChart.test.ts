@@ -177,3 +177,30 @@ describe("skill v3：多周期共振的周期对由模型指定", () => {
     expect(body).toContain("方向不明确");
   });
 });
+
+describe("skill v3：衍生品数据引导", () => {
+  const body = tradingChartSkill.content;
+
+  it("点名 trading_derivatives 并把字段含义列清", () => {
+    expect(body).toContain("trading_derivatives");
+    for (const field of ["funding", "openInterest", "markPrice", "oraclePrice", "midPrice", "impactPrices", "volume24h"]) {
+      expect(body).toContain(field);
+    }
+  });
+
+  it("强调按小时结算与 Binance 的差异", () => {
+    expect(body).toContain("按小时结算");
+  });
+
+  it("说明 HL 独有的两项与为什么独有", () => {
+    expect(body).toContain("predictedFunding");
+    expect(body).toContain("openInterestCap");
+    expect(body).toContain("Binance 原理上给不了");
+  });
+
+  it("要求诚实暴露 5000 根保留上限，长回看走 Binance", () => {
+    expect(body).toContain("5000");
+    expect(body).toContain("truncated");
+    expect(body).toContain("长回看要用 Binance");
+  });
+});

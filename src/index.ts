@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import Schema from "@deepseek-ai/schemastery";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { CONFIDENCE_TOOL_NAME, INDICATOR_TOOL_NAME, LEVELS_TOOL_NAME, TOOL_NAME } from "./shared/tool";
+import { CONFIDENCE_TOOL_NAME, DERIVATIVES_TOOL_NAME, INDICATOR_TOOL_NAME, LEVELS_TOOL_NAME, TOOL_NAME } from "./shared/tool";
 import { BinanceProvider } from "./market/binance";
 import { buildConfidenceEvidence, type ConfidenceDirection } from "./analysis/confidence";
 import {
@@ -21,7 +21,8 @@ import {
 } from "./analysis/typesafe";
 import { describeIndicators } from "./market/intent";
 import { buildAnchor } from "./market/anchor";
-import { requestIndicatorFacts, requestLevelFacts, requestResonance } from "./market/facts";
+import { requestDerivatives, requestIndicatorFacts, requestLevelFacts, requestResonance } from "./market/facts";
+import { HyperliquidProvider } from "./market/hyperliquid";
 import type { LevelKind } from "./market/levelFacts";
 import { parseIndicatorSelectors } from "./market/indicatorSpec";
 import { buildMarketView, chartRequestFromQuery, loadChart, type MarketView } from "./market/request";
@@ -103,6 +104,9 @@ interface HostContext {
 }
 
 const provider = new BinanceProvider();
+
+/** Hyperliquid 补充源：只在按需取衍生品时才用（工单 08）。 */
+const hyperliquidProvider = new HyperliquidProvider();
 
 /** 图卡控件点按钮时请求的端点：直接返回一份新 chartSpec（不经过模型）。 */
 const CHART_ROUTE = "/trading-agent/chart";
@@ -457,6 +461,81 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           levels: result.levels as unknown as Json,
           counts: result.counts as unknown as Json,
           truncated: result.truncated,
+        };
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: DERIVATIVES_TOOL_NAME,
+      description:
+        "取加密永续合约的衍生品数据（来源：Hyperliquid）。一次调用给出资金费、资金费中的溢价分量、"
+        + "未平仓量(OI)、标记价、预言机价、中间价、冲击价、24h 名义与基础成交量、昨日价。"
+        + "资金费在 Hyperliquid 上按**小时**结算（Binance 多为 8 小时），所以样本密度更高。"
+        + "fields 可点名要哪些；其中 predictedFunding（同一币在各场所的**预测资金费**，"
+        + "用于判断多头拥挤集中在哪个场所）与 openInterestCap（OI 已达上限、无法再开新仓的资产清单）"
+        + "是 Hyperliquid 独有、Binance 原理上给不了的数据，只有点名才会去取。"
+        + "**资金费/OI 是市场状态，不是交易建议**；拿不到时返回 ok=false 并说明原因。",
+      parameters: {
+        symbol: { type: "string", required: true, description: "币种或交易对，例如 BTC 或 HYPE。" },
+        fields: {
+          type: "array",
+          items: { type: "string" },
+          description: "要哪些字段：funding / premium / openInterest / markPrice / oraclePrice / midPrice / "
+            + "impactPrices / volume24h / prevDayPrice / predictedFunding / openInterestCap；缺省给常用一组。",
+        },
+      },
+      output: {
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            ok: { type: "boolean", required: true },
+            symbol: { type: "string" },
+            source: { type: "string" },
+            snapshot: { type: "json" },
+            predictedFunding: { type: "json" },
+            openInterestCap: { type: "json" },
+            reason: { type: "string" },
+            hint: { type: "string" },
+          },
+        },
+        render: (_args, value) => {
+          if (value.ok !== true) {
+            return [{ type: "text", text: `未取到衍生品数据（${String(value.reason ?? "unknown")}）。${String(value.hint ?? "")}` }];
+          }
+          const blocks = [{
+            type: "text" as const,
+            text: `${String(value.symbol)} 的${String(value.source ?? "")}永续数据（机械事实）：${JSON.stringify(value.snapshot)}`,
+          }];
+          if (value.predictedFunding !== undefined) {
+            blocks.push({ type: "text" as const, text: `跨场所预测资金费：${JSON.stringify(value.predictedFunding)}` });
+          }
+          if (value.openInterestCap !== undefined) {
+            blocks.push({ type: "text" as const, text: `OI 已达上限的资产：${JSON.stringify(value.openInterestCap)}` });
+          }
+          return blocks;
+        },
+      },
+      execute: async (args) => {
+        const result = await requestDerivatives(
+          {
+            symbol: args.symbol,
+            ...(args.fields === undefined ? {} : { fields: args.fields as never }),
+          },
+          { hyperliquid: () => hyperliquidProvider },
+        );
+        if (result.ok !== true) {
+          return { ok: false, reason: result.reason, hint: result.hint };
+        }
+        return {
+          ok: true,
+          symbol: result.symbol,
+          source: result.source,
+          snapshot: result.snapshot as unknown as Json,
+          ...(result.predictedFunding === undefined ? {} : { predictedFunding: result.predictedFunding as unknown as Json }),
+          ...(result.openInterestCap === undefined ? {} : { openInterestCap: result.openInterestCap as unknown as Json }),
         };
       },
     }),

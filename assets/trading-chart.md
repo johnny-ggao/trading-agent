@@ -93,8 +93,9 @@
 1. `trading_chart`——出图 + 锚点（先有 symbol 与周期，后面的请求都建立在它上面）。需要多周期共振时**在同一调用里传 `compareTo`** 指定要对比的周期；
 2. `trading_indicator`——要指标值。可指定周期与参数，**可以再发一轮**接着看别的；
 3. `trading_levels`——要支撑/阻力/斐波那契/枢轴，容差与条数由你定；
-4. `trading_confidence`——形成方向性结论后校准置信度；
-5. 写回答，引用工具给出的具体数值与时间。
+4. `trading_derivatives`——要永续合约的衍生品数据（资金费/OI/标记价/预言机价/溢价/冲击价），见下节；
+5. `trading_confidence`——形成方向性结论后校准置信度；
+6. 写回答，引用工具给出的具体数值与时间。
 
 ### 指标请求怎么写
 
@@ -121,6 +122,27 @@
 ### 价位请求怎么写
 
 `trading_levels` 的 `kinds` 可选 `support` / `resistance` / `fib` / `pivots`；`tolerancePct`（默认 1）越小簇越细，`maxLevels` 按触碰次数降序截断。需要"最硬的几条"就调小 `maxLevels`，需要"完整的簇结构"就别传它。每条价位带 `touches`（触碰次数，越多越硬）、`distancePct`（距现价）与 `pivotTimes`（形成它的枢轴时间）。
+
+### 衍生品数据（trading_derivatives，来源 Hyperliquid）
+
+判断"多头是否拥挤"要看资金费与 OI，这些只有永续合约有：
+
+| 字段 | 含义与用法 |
+|---|---|
+| `funding` / `premium` | 当前资金费率与其溢价分量。**HL 按小时结算**（Binance 多为 8 小时），所以同一资产在 HL 上的样本密度更高 |
+| `openInterest` | 未平仓量。配合价格看"增仓上涨/减仓上涨" |
+| `markPrice` / `oraclePrice` / `midPrice` | 标记价 / 预言机价（验证者发布的 CEX 加权中位数）/ 中间价。**三者背离本身就是信号** |
+| `impactPrices` | 吃下 2 万美元后的实际均价（双边），比中间价更接近真实成交 |
+| `volume24h` / `prevDayPrice` | 24h 名义与基础成交量、昨日价 |
+
+两项 **Hyperliquid 独有、Binance 原理上给不了**（只有点名才会去取）：
+
+| 字段 | 为什么独有 |
+|---|---|
+| `predictedFunding` | 同一个币在 **BinPerp / BybitPerp / HlPerp** 等场所的预测资金费并排给出。某场所显著更高 = 该场所多头更拥挤，这是纯 Binance 数据源拿不到的视角 |
+| `openInterestCap` | **OI 已达上限、无法再开新仓**的资产清单——罕见的容量信号，成本极低 |
+
+注意：HL 每个市场只保留**最近 5000 根 K 线**（1h 约 208 天）。工具返回 `truncated` 与 `note` 时，说明这段历史超出保留范围，**长回看要用 Binance**，不要说"当时没有行情"。
 
 ### 多周期共振：周期对由你定
 

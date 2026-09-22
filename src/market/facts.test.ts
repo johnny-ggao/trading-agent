@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { requestIndicatorFacts, requestLevelFacts, requestResonance } from "./facts";
+import { requestDerivatives, requestIndicatorFacts, requestLevelFacts, requestResonance } from "./facts";
 import type { Candle } from "../shared/chartSpec";
 import type { MarketDataProvider } from "./types";
 
@@ -89,7 +89,7 @@ describe("requestResonance：周期对由调用方指定", () => {
   }));
   const byInterval: MarketDataProvider = {
     fetchCandles: async (_symbol, interval) => (interval === "1d" ? dailyUp : weeklyFlat),
-    fetchDerivatives: async (symbol) => ({ symbol }),
+    fetchDerivatives: async (symbol: string) => ({ symbol }),
   };
 
   it("按指定周期对比较，并回 grounding", async () => {
@@ -120,7 +120,7 @@ describe("requestResonance：周期对由调用方指定", () => {
   it("高周期数据不足时明确报缺", async () => {
     const thin: MarketDataProvider = {
       fetchCandles: async (_symbol, interval) => (interval === "1w" ? dailyUp.slice(0, 2) : dailyUp),
-      fetchDerivatives: async (symbol) => ({ symbol }),
+      fetchDerivatives: async (symbol: string) => ({ symbol }),
     };
     const result = await requestResonance(thin, { symbol: "BTC", interval: "1d", compareTo: "1w" }, { now: 70 * 86_400 * 1000 });
     expect(result.ok).toBe(false);
@@ -128,4 +128,95 @@ describe("requestResonance：周期对由调用方指定", () => {
     expect(result.required).toBeGreaterThan(2);
     expect(result.available).toBe(2);
   });
+});
+
+describe("requestDerivatives：资金费/OI/预言机价与 HL 独有项", () => {
+  const metaCtx = [
+    { universe: [{ name: "BTC" }] },
+    [{
+      funding: "0.0000125", openInterest: "688.11", markPx: "14.3161", oraclePx: "14.32",
+      midPx: "14.314", premium: "0.00031774", impactPxs: ["14.3161", "14.3205"],
+      dayNtlVlm: "1169046.29", dayBaseVlm: "80000.5", prevDayPx: "15.322",
+    }],
+  ];
+  const predicted = [["BTC", [["BinPerp", { fundingRate: "0.00008", nextFundingTime: 1 }],
+                             ["HlPerp", { fundingRate: "-0.000002", nextFundingTime: 2 }]]]];
+
+  /** 按请求体 type 分派的假 HL 服务。 */
+  function hlProvider(oiCap: unknown = ["BADGER"]): MarketDataProvider {
+    return {
+      fetchCandles: async () => [],
+      fetchDerivatives: async (symbol: string) => ({ symbol }),
+      fetchCandleBatch: async () => ({ source: "hyperliquid", candles: [], truncated: false }),
+    } as unknown as MarketDataProvider;
+  }
+
+  it("从 Hyperliquid 取快照，并带上跨场所预测资金费与 OI 上限", async () => {
+    const { HyperliquidProvider } = await import("./hyperliquid");
+    const calls: string[] = [];
+    const provider = new HyperliquidProvider({
+      fetch: (async (_url: string, init?: { body?: string }) => {
+        const body = JSON.parse(init?.body ?? "{}") as { type: string };
+        calls.push(body.type);
+        const payload = body.type === "metaAndAssetCtxs" ? metaCtx
+          : body.type === "predictedFundings" ? predicted
+            : body.type === "perpsAtOpenInterestCap" ? ["BADGER"] : null;
+        return { status: 200, headers: { get: () => null }, json: async () => payload };
+      }) as never,
+    });
+    const result = await requestDerivatives({
+      symbol: "BTC",
+      fields: ["funding", "openInterest", "oraclePrice", "impactPrices", "predictedFunding", "openInterestCap"],
+    }, { hyperliquid: () => provider });
+    expect(result.ok).toBe(true);
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.source).toBe("hyperliquid");
+    expect(result.snapshot.funding).toBe(0.0000125);
+    expect(result.snapshot.fundingIntervalHours).toBe(1);
+    expect(result.snapshot.oraclePrice).toBe(14.32);
+    expect(result.snapshot.impactPrices).toEqual([14.3161, 14.3205]);
+    expect(result.predictedFunding?.map((row) => row.venue)).toEqual(["BinPerp", "HlPerp"]);
+    expect(result.openInterestCap).toEqual(["BADGER"]);
+    // 没点名的字段不该出现（例如 midPrice / 24h 量价）。
+    expect(result.snapshot.midPrice).toBeUndefined();
+    expect(result.snapshot.dayNotionalVolume).toBeUndefined();
+    expect(calls).toContain("metaAndAssetCtxs");
+  });
+
+  it("没点名 predictedFunding / openInterestCap 时不做那两次请求", async () => {
+    const { HyperliquidProvider } = await import("./hyperliquid");
+    const calls: string[] = [];
+    const provider = new HyperliquidProvider({
+      fetch: (async (_url: string, init?: { body?: string }) => {
+        calls.push((JSON.parse(init?.body ?? "{}") as { type: string }).type);
+        return { status: 200, headers: { get: () => null }, json: async () => metaCtx };
+      }) as never,
+    });
+    await requestDerivatives({ symbol: "BTC", fields: ["funding"] }, { hyperliquid: () => provider });
+    expect(calls).toEqual(["metaAndAssetCtxs"]);
+  });
+
+  it("字段过滤：只要 funding 时结果里不夹带别的字段", async () => {
+    const { HyperliquidProvider } = await import("./hyperliquid");
+    const provider = new HyperliquidProvider({
+      fetch: (async () => ({ status: 200, headers: { get: () => null }, json: async () => metaCtx })) as never,
+    });
+    const result = await requestDerivatives({ symbol: "BTC", fields: ["funding"] }, { hyperliquid: () => provider });
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(Object.keys(result.snapshot).sort()).toEqual(["funding", "fundingIntervalHours", "source", "symbol"]);
+  });
+
+  it("未上市的币种明确报错，不静默", async () => {
+    const { HyperliquidProvider } = await import("./hyperliquid");
+    const provider = new HyperliquidProvider({
+      fetch: (async () => ({ status: 200, headers: { get: () => null }, json: async () => metaCtx })) as never,
+    });
+    const result = await requestDerivatives({ symbol: "DOGE" }, { hyperliquid: () => provider });
+    expect(result.ok).toBe(false);
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.reason).toBe("derivatives_unavailable");
+    expect(result.hint).toContain("DOGE");
+  });
+
+  void hlProvider;
 });

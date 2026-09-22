@@ -196,3 +196,51 @@ describe("HyperliquidProvider.fetchDerivatives", () => {
     await expect(provider.fetchDerivatives("BTC")).rejects.toThrow(/metaAndAssetCtxs/);
   });
 });
+
+describe("跨场所预测资金费（HL 独有）", () => {
+  /** 官方文档样例：[[coin, [[venue, {fundingRate, nextFundingTime}], ...]], ...] */
+  const predicted = [
+    ["AVAX", [["BinPerp", { fundingRate: "0.0001", nextFundingTime: 1733961600000 }],
+              ["HlPerp", { fundingRate: "0.0000125", nextFundingTime: 1733958000000 }]]],
+    ["BTC", [["BinPerp", { fundingRate: "0.00008", nextFundingTime: 1733961600000 }],
+             ["BybitPerp", { fundingRate: "0.00005", nextFundingTime: 1733961600000 }],
+             ["HlPerp", { fundingRate: "-0.000002", nextFundingTime: 1733958000000 }]]],
+  ];
+
+  it("取出该币种在各场所的预测资金费与下次结算时间", async () => {
+    const { fetch } = fakeFetch(predicted);
+    const provider = new HyperliquidProvider({ fetch });
+    const rows = await provider.fetchPredictedFunding("BTC");
+    expect(rows).toEqual([
+      { venue: "BinPerp", fundingRate: 0.00008, nextFundingTime: 1733961600000 },
+      { venue: "BybitPerp", fundingRate: 0.00005, nextFundingTime: 1733961600000 },
+      { venue: "HlPerp", fundingRate: -0.000002, nextFundingTime: 1733958000000 },
+    ]);
+  });
+
+  it("没有该币种时返回空数组（不是报错，也不是猜一个）", async () => {
+    const { fetch } = fakeFetch(predicted);
+    const provider = new HyperliquidProvider({ fetch });
+    expect(await provider.fetchPredictedFunding("DOGE")).toEqual([]);
+  });
+
+  it("形状不对时报错", async () => {
+    const { fetch } = fakeFetch({ nope: 1 });
+    const provider = new HyperliquidProvider({ fetch });
+    await expect(provider.fetchPredictedFunding("BTC")).rejects.toThrow(/predictedFundings/);
+  });
+});
+
+describe("OI 上限清单", () => {
+  it("返回已达上限的资产列表", async () => {
+    const { fetch } = fakeFetch(["BADGER", "CANTO", "FTM"]);
+    const provider = new HyperliquidProvider({ fetch });
+    expect(await provider.fetchOpenInterestCap()).toEqual(["BADGER", "CANTO", "FTM"]);
+  });
+
+  it("形状不对时报错", async () => {
+    const { fetch } = fakeFetch({ nope: 1 });
+    const provider = new HyperliquidProvider({ fetch });
+    await expect(provider.fetchOpenInterestCap()).rejects.toThrow(/perpsAtOpenInterestCap/);
+  });
+});

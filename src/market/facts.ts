@@ -256,5 +256,137 @@ export async function requestResonance(
   };
 }
 
+/** 衍生品字段名（模型可点名的那些）。 */
+export type DerivativeField =
+  | "funding" | "premium" | "openInterest" | "markPrice" | "oraclePrice" | "midPrice"
+  | "impactPrices" | "volume24h" | "prevDayPrice"
+  | "predictedFunding" | "openInterestCap";
+
+const DERIVATIVE_FIELDS: DerivativeField[] = [
+  "funding", "premium", "openInterest", "markPrice", "oraclePrice", "midPrice",
+  "impactPrices", "volume24h", "prevDayPrice", "predictedFunding", "openInterestCap",
+];
+
+export interface DerivativesInput {
+  symbol: string;
+  /** 数据来源；目前只有 hyperliquid（Binance 现货给不了这些字段）。 */
+  source?: "hyperliquid";
+  /** 要哪些字段；缺省给常用的一组（不含两次额外调用）。 */
+  fields?: DerivativeField[];
+}
+
+export interface DerivativesResult {
+  ok: true;
+  symbol: string;
+  source: string;
+  snapshot: Record<string, unknown>;
+  predictedFunding?: Array<{ venue: string; fundingRate: number; nextFundingTime: number }>;
+  openInterestCap?: string[];
+}
+
+/** 衍生品源的注入点：测试可换成假 provider，生产用 HyperliquidProvider。 */
+export interface DerivativesSources {
+  hyperliquid: () => import("./hyperliquid").HyperliquidProvider;
+}
+
+/** 数据不足 / 不可用时的形状（与其它工具一致）。 */
+export interface DerivativesUnavailable {
+  ok: false;
+  reason: "derivatives_unavailable";
+  hint: string;
+}
+
+export type DerivativesResponse = DerivativesResult | DerivativesUnavailable;
+
+/** 缺省字段：一次调用就能拿到的常用项。 */
+const DEFAULT_DERIVATIVE_FIELDS: DerivativeField[] = [
+  "funding", "openInterest", "markPrice", "oraclePrice", "premium", "impactPrices", "volume24h",
+];
+
+/**
+ * 按需取衍生品数据：**Hyperliquid 原生永续**。
+ *
+ * 与 Binance 的差别（见 docs/research/hyperliquid-extra-data.md）：HL 一次
+ * `metaAndAssetCtxs` 就带回资金费/溢价/OI/标记价/预言机价/冲击价/24h 量价，且资金费按
+ * **小时**结算；`predictedFunding`（跨场所预测资金费）与 `openInterestCap`（OI 上限清单）
+ * 是 Binance 原理上给不了的，只有点名时才发起额外请求。
+ */
+export async function requestDerivatives(
+  input: DerivativesInput,
+  sources: DerivativesSources,
+): Promise<DerivativesResponse> {
+  const fields = input.fields === undefined || input.fields.length === 0
+    ? DEFAULT_DERIVATIVE_FIELDS
+    : DERIVATIVE_FIELDS.filter((field) => input.fields!.includes(field));
+  const provider = sources.hyperliquid();
+  const coin = input.symbol.trim().toUpperCase();
+
+  let snapshot: Record<string, unknown>;
+  try {
+    const raw = await provider.fetchDerivatives(coin);
+    snapshot = projectDerivativeFields(raw as unknown as Record<string, unknown>, fields);
+  } catch (error) {
+    return {
+      ok: false,
+      reason: "derivatives_unavailable",
+      hint: `${coin} 在 Hyperliquid 上没有可用的永续上下文（${error instanceof Error ? error.message : String(error)}）；`
+        + "若这是 Binance 才有的币种，请改用行情与指标工具。",
+    };
+  }
+
+  const result: DerivativesResult = {
+    ok: true,
+    symbol: coin,
+    source: String(snapshot.source ?? "hyperliquid"),
+    snapshot,
+  };
+
+  if (fields.includes("predictedFunding")) {
+    try {
+      const rows = await provider.fetchPredictedFunding(coin);
+      if (rows.length > 0) result.predictedFunding = rows;
+    } catch {
+      // 预测资金费拿不到不影响主快照；不编造。
+    }
+  }
+  if (fields.includes("openInterestCap")) {
+    try {
+      result.openInterestCap = await provider.fetchOpenInterestCap();
+    } catch {
+      // 同上：可选增强项，失败就省略。
+    }
+  }
+  return result;
+}
+
+/** 字段名 → 快照键，按请求投影（不夹带未被点名的字段）。 */
+function projectDerivativeFields(
+  raw: Record<string, unknown>,
+  fields: DerivativeField[],
+): Record<string, unknown> {
+  const out: Record<string, unknown> = {
+    symbol: raw.symbol,
+    ...(raw.source === undefined ? {} : { source: raw.source }),
+    ...(raw.fundingIntervalHours === undefined ? {} : { fundingIntervalHours: raw.fundingIntervalHours }),
+  };
+  const wanted: Record<string, string[]> = {
+    funding: ["funding"],
+    premium: ["premium"],
+    openInterest: ["openInterest"],
+    markPrice: ["markPrice"],
+    oraclePrice: ["oraclePrice"],
+    midPrice: ["midPrice"],
+    impactPrices: ["impactPrices"],
+    volume24h: ["dayNotionalVolume", "dayBaseVolume"],
+    prevDayPrice: ["prevDayPrice"],
+  };
+  for (const field of fields) {
+    for (const key of wanted[field] ?? []) {
+      if (raw[key] !== undefined) out[key] = raw[key];
+    }
+  }
+  return out;
+}
+
 // intervalToMs 的重导出仅用于测试注入时钟时的换算便利。
 export { intervalToMs };
