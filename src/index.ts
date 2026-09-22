@@ -342,6 +342,12 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           required: true,
           description: "指标请求，例如 [\"ma:50\",\"ma:200\",\"rsi:14\",\"macd\"]。",
         },
+        lookback: {
+          type: "string",
+          description: "要看多长时间的历史（语义单位是时间）：如 \"90d\"、\"3M\"、\"2w\"、\"1y\"、\"36h\"，"
+            + "或直接给根数 \"500\"。省略时窗口由指标预热期决定；与指标需求取较大者。"
+            + "设定它可以让分析窗口不依赖于你选的指标。",
+        },
       },
       output: {
         schema: {
@@ -395,6 +401,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           symbol: args.symbol,
           interval: args.interval,
           indicators: selectors,
+          ...(args.lookback === undefined ? {} : { lookback: args.lookback }),
         });
         if (result.ok !== true) {
           return {
@@ -434,6 +441,10 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         },
         tolerancePct: { type: "number", description: "聚簇容差（百分比），默认 1。越小簇越细。" },
         maxLevels: { type: "number", description: "返回条数上限，按触碰次数降序；缺省不截断。" },
+        lookback: {
+          type: "string",
+          description: "用多长时间的历史价格结构来定价位（如 \"90d\"、\"3M\"）；缺省取够算枢轴的最短窗口。",
+        },
       },
       output: {
         schema: {
@@ -482,6 +493,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           ...(args.kinds === undefined ? {} : { kinds: args.kinds }),
           ...(args.tolerancePct === undefined ? {} : { tolerancePct: args.tolerancePct }),
           ...(args.maxLevels === undefined ? {} : { maxLevels: args.maxLevels }),
+          ...(args.lookback === undefined ? {} : { lookback: args.lookback }),
         });
         if (result.ok !== true) {
           return {

@@ -271,3 +271,85 @@ describe("入参校验：不合法就报错，不再静默空成功", () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe("lookback：agent 用时间跨度表达要看多长历史", () => {
+  /** 每次请求都记录上限，便于断言"取了多少"。 */
+  function recording(total: number): { provider: MarketDataProvider; asked: number[] } {
+    const asked: number[] = [];
+    const candles: Candle[] = Array.from({ length: total }, (_, i) => ({
+      time: i * 3_600, open: i, high: i + 1, low: i - 1, close: i, volume: 1,
+    }));
+    return {
+      asked,
+      provider: {
+        fetchCandles: async (_s, _i, opts) => { asked.push(opts?.limit ?? 0); return candles.slice(-(opts?.limit ?? 500)); },
+        fetchDerivatives: async (symbol) => ({ symbol }),
+      },
+    };
+  }
+  const NOW = 20_000 * 3_600 * 1000;
+
+  it("lookback 撑开窗口（即使指标只要很少的根数）", async () => {
+    const { provider, asked } = recording(3_000);
+    // 30d 于 1h = 720 根，远超 rsi(14) 的 14 根，且仍在单次上限（1000）之内。
+    const result = await requestIndicatorFacts(provider, {
+      symbol: "BTC", interval: "1h", indicators: [{ id: "rsi", period: 14 }], lookback: "30d",
+    }, { now: NOW });
+    expect(result.ok).toBe(true);
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.grounding.barsUsed).toBeGreaterThanOrEqual(720);
+    expect(asked[0]).toBeGreaterThanOrEqual(720);
+    expect(asked[0]).toBeGreaterThan(720 - 100); // 明显大于默认篮子（1h 默认 720，含余量后更小）
+  });
+
+  it("指标预热更长时以指标为准（两者取较大）", async () => {
+    const { provider, asked } = recording(3_000);
+    await requestIndicatorFacts(provider, {
+      symbol: "BTC", interval: "1h", indicators: [{ id: "ma", period: 900 }], lookback: "1d",
+    }, { now: NOW });
+    // 1d = 24 根 << ma:900 的 900 根
+    expect(asked[0]).toBeGreaterThanOrEqual(900);
+  });
+
+  it("lookback 超出该周期能覆盖的长度时，按上限失败并说明时间", async () => {
+    const { provider } = recording(3_000);
+    const result = await requestIndicatorFacts(provider, {
+      symbol: "BTC", interval: "1h", indicators: [{ id: "rsi", period: 14 }], lookback: "365d",
+    }, { now: NOW });
+    expect(result.ok).toBe(false);
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.reason).toBe("insufficient_closed_bars");
+    expect(result.hint).toContain("只能覆盖");
+    expect(result.hint).toContain("4h");   // 1h 的高一级周期
+    expect(result.hint).toContain("约 167 天");
+  });
+
+  it("lookback 写法不合法时明确报错", async () => {
+    const { provider } = recording(100);
+    const result = await requestIndicatorFacts(provider, {
+      symbol: "BTC", interval: "1h", indicators: [{ id: "rsi", period: 14 }], lookback: "abc",
+    }, { now: NOW });
+    expect(result.ok).toBe(false);
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.reason).toBe("invalid_args");
+    expect(result.hint).toContain("lookback");
+  });
+});
+
+describe("价位也接受时间跨度", () => {
+  it("lookback 决定用多长的历史结构定价位", async () => {
+    const heard: number[] = [];
+    const bars: Candle[] = Array.from({ length: 6_000 }, (_, i) => ({
+      time: i * 3_600, open: i, high: i + 1, low: i - 1, close: i, volume: 1,
+    }));
+    const provider: MarketDataProvider = {
+      fetchCandles: async (_s, _i, opts) => { heard.push(opts?.limit ?? 0); return bars.slice(-(opts?.limit ?? 500)); },
+      fetchDerivatives: async (symbol) => ({ symbol }),
+    };
+    const result = await requestLevelFacts(provider, { symbol: "BTC", interval: "1h", lookback: "30d" }, { now: 10_000 * 3_600 * 1000 });
+    expect(result.ok).toBe(true);
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(heard[0]).toBeGreaterThanOrEqual(720);
+    expect(result.grounding.barsUsed).toBeGreaterThanOrEqual(720);
+  });
+});

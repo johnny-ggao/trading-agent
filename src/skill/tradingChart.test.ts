@@ -224,3 +224,23 @@ describe("skill v3：取数上限是 agent 必须先知道的事实", () => {
     expect(body).toContain("truncated");
   });
 });
+
+describe("skill v3：lookback 让 agent 用时间表达窗口", () => {
+  const body = tradingChartSkill.content;
+
+  it("给出 lookback 的写法与语义", () => {
+    expect(body).toContain("lookback");
+    expect(body).toContain('"90d"');
+    expect(body).toContain('"3M"');
+    expect(body).toContain('"1y"');
+  });
+
+  it("说明窗口取较大者，且不必借指标撑开窗口", () => {
+    expect(body).toContain("max(指标预热需求, lookback 换算的根数)");
+    expect(body).toContain("不必");
+  });
+
+  it("说明写错会明确报错", () => {
+    expect(body).toContain("明确报错");
+  });
+});

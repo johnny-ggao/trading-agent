@@ -11,6 +11,7 @@ import { computeIndicatorFacts, warmupBarsFor, type IndicatorFact, type Indicato
 import { DEFAULT_INDICATORS } from "./indicators";
 import { computeLevelFacts, type LevelFact, type LevelKind, type LevelPivot } from "./levelFacts";
 import { computeMarketContext } from "./context";
+import { lookbackBars } from "./lookback";
 import { computeResonance, higherInterval } from "./multiTimeframe";
 import { resolveInterval, type Interval } from "./timeframe";
 import { baseCoin, resolveSymbol } from "./symbol";
@@ -72,6 +73,11 @@ export interface IndicatorRequestInput {
   symbol: string;
   interval?: string;
   indicators: IndicatorSelector[];
+  /**
+   * 要看多长时间的历史（如 `90d` / `3M` / `2w`），或直接给根数 `500`。
+   * 与指标的预热需求**取较大者**：agent 可以直接说"看这三个月"，不必借指标参数撑开窗口。
+   */
+  lookback?: string;
 }
 
 export interface IndicatorFactsResult {
@@ -206,10 +212,21 @@ export async function requestIndicatorFacts(
       hint: "至少点名一个指标，例如 [{ id: \"rsi\", period: 14 }]。",
     };
   }
+  // 窗口 = max(指标预热需求, agent 指定的时间跨度)。agent 可以直接说"看这三个月"，
+  // 不必借某个指标参数来间接撑开窗口。
+  const byWarmup = Math.max(...input.indicators.map(warmupBarsFor));
+  let byLookback = 0;
+  if (input.lookback !== undefined) {
+    try {
+      byLookback = lookbackBars(input.lookback, interval);
+    } catch (error) {
+      return invalidArgs(error instanceof Error ? error.message : String(error)).error;
+    }
+  }
   const closed = await closedBars(provider, {
     symbol: input.symbol,
     interval,
-    needs: Math.max(...input.indicators.map(warmupBarsFor)),
+    needs: Math.max(byWarmup, byLookback),
     hint: "" /* 由 closedBars 统一给出可纠正的说明 */,
   }, options);
   if (closed.ok !== true) return closed.error;
@@ -231,6 +248,8 @@ export interface LevelRequestInput {
   pivotOptions?: { left: number; right: number };
   tolerancePct?: number;
   maxLevels?: number;
+  /** 要看多长时间的历史（如 `90d`）；决定"用哪一段的价格结构"来定价位。 */
+  lookback?: string;
 }
 
 const LEVEL_KINDS: LevelKind[] = ["support", "resistance", "fib", "pivots"];
@@ -280,10 +299,18 @@ export async function requestLevelFacts(
   const invalid = validateLevelInput(input);
   if (invalid !== undefined) return invalid.error;
   const interval = resolveInterval(input.interval);
+  let byLookback = MIN_BARS_FOR_PIVOTS;
+  if (input.lookback !== undefined) {
+    try {
+      byLookback = Math.max(byLookback, lookbackBars(input.lookback, interval));
+    } catch (error) {
+      return invalidArgs(error instanceof Error ? error.message : String(error)).error;
+    }
+  }
   const closed = await closedBars(provider, {
     symbol: input.symbol,
     interval,
-    needs: MIN_BARS_FOR_PIVOTS,
+    needs: byLookback,
     hint: "",
   }, options);
   if (closed.ok !== true) return closed.error;
