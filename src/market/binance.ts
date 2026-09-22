@@ -1,5 +1,5 @@
 import type { Candle } from "../shared/chartSpec";
-import type { DerivativesSnapshot, FetchLike, HttpResponseLike, MarketDataProvider } from "./types";
+import type { CandleBatch, DerivativesSnapshot, FetchLike, HttpResponseLike, MarketDataProvider } from "./types";
 import { resolveSymbol } from "./symbol";
 
 export interface BinanceProviderOptions {
@@ -56,6 +56,18 @@ export class BinanceProvider implements MarketDataProvider {
     this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.now = options.now ?? (() => Date.now());
     this.cacheTtlMs = options.cacheTtlMs ?? 30_000;
+  }
+
+  /**
+   * 带来源的取数：Binance 可分页，因此**没有保留上限**（`truncated` 恒为 false）。
+   * 声明 source 是为了让 grounding 能告诉模型"这批数来自哪里"。
+   */
+  async fetchCandleBatch(
+    symbol: string,
+    interval: string,
+    options: { limit?: number; endTime?: number } = {},
+  ): Promise<CandleBatch> {
+    return { source: "binance", candles: await this.fetchCandles(symbol, interval, options), truncated: false };
   }
 
   async fetchCandles(

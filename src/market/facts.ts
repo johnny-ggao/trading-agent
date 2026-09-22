@@ -5,7 +5,7 @@
  * 于是 `src/index.ts` 里的工具注册只剩下参数转译。**取数一律走已收盘边界**
  * （`closedCandles.ts`），并且所有响应都自带 grounding。
  */
-import { barsForInterval, intervalToMs } from "./chart";
+import { barsForInterval, DEFAULT_BAR_POLICY, intervalToMs } from "./chart";
 import { partitionCandles } from "./closedCandles";
 import { computeIndicatorFacts, warmupBarsFor, type IndicatorFact, type IndicatorSelector } from "./indicatorFacts";
 import { DEFAULT_INDICATORS } from "./indicators";
@@ -14,24 +14,54 @@ import { computeMarketContext } from "./context";
 import { computeResonance, higherInterval } from "./multiTimeframe";
 import { resolveInterval, type Interval } from "./timeframe";
 import { resolveSymbol } from "./symbol";
-import type { MarketDataProvider } from "./types";
+import type { Candle, MarketDataProvider } from "./types";
 
-/** 每次响应都带的"数据有多新、用了哪些 K 线"。 */
+/** 每次响应都带的"数据有多新、用了哪些 K 线、来自哪里"。 */
 export interface Grounding {
   lastClosedBar?: number;
   formingBars: number;
   barsUsed: number;
   closedOnly: true;
+  /** 数据来源（如 "binance" / "hyperliquid"）；缺省表示来源未声明。 */
+  source?: string;
+  /**
+   * 请求的窗口是否有一部分超出该源的保留范围（例如 Hyperliquid 只保留最近 5000 根）。
+   * 为真时 `note` 说明该怎么补救——**不要把空结果当成"当时没有行情"**。
+   */
+  truncated?: boolean;
+  note?: string;
 }
 
-/** 数据不足时的统一形状：说明缺多少，而不是给一个基于不足窗口的数。 */
+/** 取数的统一失败形状：说明缺多少，而不是给一个基于不足窗口的数。 */
 export interface Insufficient {
   ok: false;
-  reason: "insufficient_closed_bars" | "empty_request";
+  reason: "insufficient_closed_bars" | "empty_request" | "derivatives_unavailable";
   required: number;
   available: number;
   hint: string;
 }
+
+/** 取数接缝的入参：**needs 决定要多少根**，这是取数与够不够判定的唯一策略。 */
+export interface ClosedBarsInput {
+  symbol: string;
+  interval?: string;
+  /** 本次请求需要多少根已收盘 K 线（含指标预热期的推导）。 */
+  needs: number;
+  /** 失败时给模型的补救提示；缺省用通用文案。 */
+  hint?: string;
+}
+
+/** 取数成功的值：已收盘 K 线 + 来源与新鲜度。 */
+export interface ClosedBarsValue {
+  symbol: string;
+  interval: string;
+  candles: Candle[];
+  grounding: Grounding;
+}
+
+export type ClosedBarsResult =
+  | { ok: true; value: ClosedBarsValue }
+  | { ok: false; error: Insufficient };
 
 export interface IndicatorRequestInput {
   symbol: string;
@@ -59,26 +89,80 @@ interface ClockOptions {
   now?: number;
 }
 
-async function closedSeries(
+/**
+ * 取数接缝：**一个 needs 决定取多少、也决定够不够**。
+ *
+ * 此前取数按默认指标篮子推导、而够不够按请求事后判定，两者分居两模块，
+ * 于是 `ma:900` 只取 720 根就被判"数据不足"，把按需取数又推回默认篮子（ADR-0008 的回归）。
+ * 现在：取 `min(max(needs + 上下文余量, 默认篮子), maxBars)`，够不够用同一个数判定。
+ * 失败形状也在这里统一产出，调用方不再各自手搓。
+ */
+export async function closedBars(
+  provider: MarketDataProvider,
+  input: ClosedBarsInput,
+  options: ClockOptions = {},
+): Promise<ClosedBarsResult> {
+  const market = resolveSymbol(input.symbol);
+  const interval = resolveInterval(input.interval);
+  const want = Math.min(
+    Math.max(input.needs + DEFAULT_BAR_POLICY.minContextBars, barsForInterval(interval)),
+    DEFAULT_BAR_POLICY.maxBars,
+  );
+  const fetched = await fetchCandles(provider, market, interval, want);
+  const closure = partitionCandles(fetched.candles, interval, options.now ?? Date.now());
+  const available = closure.closed.length;
+
+  if (available < input.needs) {
+    return {
+      ok: false,
+      error: {
+        ok: false,
+        reason: "insufficient_closed_bars",
+        required: input.needs,
+        available,
+        hint: `${input.hint ?? "已收盘 K 线不足。"}（本周期单次最多取 ${DEFAULT_BAR_POLICY.maxBars} 根，`
+          + `本次需要 ${input.needs} 根）`,
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    value: {
+      symbol: market,
+      interval,
+      candles: closure.closed,
+      grounding: {
+        ...(closure.lastClosed === undefined ? {} : { lastClosedBar: closure.lastClosed.time }),
+        formingBars: closure.formingBars,
+        barsUsed: available,
+        closedOnly: true,
+        ...(fetched.source === undefined ? {} : { source: fetched.source }),
+        ...(fetched.truncated === undefined ? {} : { truncated: fetched.truncated }),
+        ...(fetched.note === undefined ? {} : { note: fetched.note }),
+      },
+    },
+  };
+}
+
+/** 优先用带来源信息的 `fetchCandleBatch`（Hyperliquid 的 5000 根上限），否则退回裸数组。 */
+async function fetchCandles(
   provider: MarketDataProvider,
   symbol: string,
   interval: string,
-  options: ClockOptions,
-): Promise<{ symbol: string; interval: string; candles: Awaited<ReturnType<MarketDataProvider["fetchCandles"]>>; grounding: Grounding }> {
-  const market = resolveSymbol(symbol);
-  const candles = await provider.fetchCandles(market, interval, { limit: barsForInterval(interval) });
-  const closure = partitionCandles(candles, interval, options.now ?? Date.now());
-  return {
-    symbol: market,
-    interval,
-    candles: closure.closed,
-    grounding: {
-      ...(closure.lastClosed === undefined ? {} : { lastClosedBar: closure.lastClosed.time }),
-      formingBars: closure.formingBars,
-      barsUsed: closure.closed.length,
-      closedOnly: true,
-    },
-  };
+  limit: number,
+): Promise<{ candles: Candle[]; source?: string; truncated?: boolean; note?: string }> {
+  if (typeof provider.fetchCandleBatch === "function") {
+    const batch = await provider.fetchCandleBatch(symbol, interval, { limit });
+    return {
+      candles: batch.candles,
+      source: batch.source,
+      // 只有真被截断时才把 note 递给模型，避免噪音。
+      truncated: batch.truncated,
+      ...(batch.truncated && batch.note !== undefined ? { note: batch.note } : {}),
+    };
+  }
+  return { candles: await provider.fetchCandles(symbol, interval, { limit }) };
 }
 
 /** 按需算指标：只算被点名的，数据不足时明确报缺。 */
@@ -97,23 +181,20 @@ export async function requestIndicatorFacts(
       hint: "至少点名一个指标，例如 [{ id: \"rsi\", period: 14 }]。",
     };
   }
-  const series = await closedSeries(provider, input.symbol, interval, options);
-  const required = Math.max(...input.indicators.map(warmupBarsFor));
-  if (series.candles.length < required) {
-    return {
-      ok: false,
-      reason: "insufficient_closed_bars",
-      required,
-      available: series.candles.length,
-      hint: `已收盘 K 线不足以算出这些指标（需要 ${required} 根）。改用更长的周期，或换更短的指标参数。`,
-    };
-  }
+  const closed = await closedBars(provider, {
+    symbol: input.symbol,
+    interval,
+    needs: Math.max(...input.indicators.map(warmupBarsFor)),
+    hint: "已收盘 K 线不足以算出这些指标。改用更长的周期，或换更短的指标参数。",
+  }, options);
+  if (closed.ok !== true) return closed.error;
+  const { value } = closed;
   return {
     ok: true,
-    symbol: series.symbol,
-    interval,
-    grounding: series.grounding,
-    indicators: computeIndicatorFacts(series.candles, input.indicators),
+    symbol: value.symbol,
+    interval: value.interval,
+    grounding: value.grounding,
+    indicators: computeIndicatorFacts(value.candles, input.indicators),
   };
 }
 
@@ -146,16 +227,14 @@ export async function requestLevelFacts(
   options: ClockOptions = {},
 ): Promise<LevelFactsResponse> {
   const interval = resolveInterval(input.interval);
-  const series = await closedSeries(provider, input.symbol, interval, options);
-  if (series.candles.length < MIN_BARS_FOR_PIVOTS) {
-    return {
-      ok: false,
-      reason: "insufficient_closed_bars",
-      required: MIN_BARS_FOR_PIVOTS,
-      available: series.candles.length,
-      hint: "K 线太少，撑不起枢轴与价位判断；换成更小的周期以取得更多 K 线。",
-    };
-  }
+  const closed = await closedBars(provider, {
+    symbol: input.symbol,
+    interval,
+    needs: MIN_BARS_FOR_PIVOTS,
+    hint: "K 线太少，撑不起枢轴与价位判断；换成更小的周期以取得更多 K 线。",
+  }, options);
+  if (closed.ok !== true) return closed.error;
+  const series = closed.value;
   const facts = computeLevelFacts(series.candles, {
     ...(input.kinds === undefined ? {} : { kinds: input.kinds }),
     ...(input.pivotOptions === undefined ? {} : { pivotOptions: input.pivotOptions }),
@@ -165,7 +244,7 @@ export async function requestLevelFacts(
   return {
     ok: true,
     symbol: series.symbol,
-    interval,
+    interval: series.interval,
     grounding: series.grounding,
     pivots: facts.pivots,
     levels: facts.levels,
@@ -215,23 +294,25 @@ export async function requestResonance(
     ? higherInterval(currentInterval) as Interval
     : resolveInterval(input.compareTo);
 
-  const [currentSeries, higherSeries] = await Promise.all([
-    closedSeries(provider, input.symbol, currentInterval, options),
-    closedSeries(provider, input.symbol, higher, options),
-  ]);
-
   // 两侧都要够算市场状态（ADX 等），否则明确报缺而不是给一个空结论。
-  for (const series of [currentSeries, higherSeries]) {
-    if (series.candles.length < MIN_BARS_FOR_CONTEXT) {
-      return {
-        ok: false,
-        reason: "insufficient_closed_bars",
-        required: MIN_BARS_FOR_CONTEXT,
-        available: series.candles.length,
-        hint: `${series.interval} 的已收盘 K 线不足以计算市场状态（需要 ${MIN_BARS_FOR_CONTEXT} 根）；改用更小的周期或更短的指标参数。`,
-      };
-    }
-  }
+  const [currentClosed, higherClosed] = await Promise.all([
+    closedBars(provider, {
+      symbol: input.symbol,
+      interval: currentInterval,
+      needs: MIN_BARS_FOR_CONTEXT,
+      hint: `${currentInterval} 的已收盘 K 线不足以计算市场状态。改用更小的周期或更短的指标参数。`,
+    }, options),
+    closedBars(provider, {
+      symbol: input.symbol,
+      interval: higher,
+      needs: MIN_BARS_FOR_CONTEXT,
+      hint: `${higher} 的已收盘 K 线不足以计算市场状态。改用更小的周期或更短的指标参数。`,
+    }, options),
+  ]);
+  if (currentClosed.ok !== true) return currentClosed.error;
+  if (higherClosed.ok !== true) return higherClosed.error;
+  const currentSeries = currentClosed.value;
+  const higherSeries = higherClosed.value;
 
   const currentContext = computeMarketContext(currentSeries.candles, DEFAULT_INDICATORS);
   const higherContext = computeMarketContext(higherSeries.candles, DEFAULT_INDICATORS);

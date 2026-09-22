@@ -113,3 +113,19 @@ describe("BinanceProvider 多主机回退", () => {
   });
 });
 
+
+describe("声明来源与保留语义", () => {
+  it("fetchCandleBatch 报告来源 binance 且无保留上限", async () => {
+    const fetchImpl: FetchLike = async () => res([
+      kline(1_700_000_000_000, 101),
+      kline(1_700_003_600_000, 102),
+      kline(1_700_007_200_000, 103),
+    ]);
+    const provider = new BinanceProvider({ fetch: fetchImpl, cacheTtlMs: 0 });
+    const batch = await provider.fetchCandleBatch("BTC", "1h", { limit: 3 });
+    expect(batch.source).toBe("binance");
+    expect(batch.truncated).toBe(false);
+    expect(batch.retentionLimit).toBeUndefined();
+    expect(batch.candles).toHaveLength(3);
+  });
+});
