@@ -17,6 +17,18 @@ describe("trading_levels 的契约", () => {
     expect(() => payloadCoversSchema(LEVELS_OUTPUT_SCHEMA, fail)).not.toThrow();
   });
 
+  it("渲染要说清「返回了多少 / 总共多少」，否则模型会以为这就是全部", () => {
+    const withTotals = levelsBlocks({
+      ...ok,
+      counts: { support: 22, resistance: 2, fib: 5, pivots: 233 },
+      pivots: [{ time: 1, price: 1, kind: "high" }],
+    })[0]!.text;
+    expect(withTotals).toContain("共 29 条");
+    expect(withTotals).toContain("支撑 22/阻力 2/斐波 5");
+    expect(withTotals).toContain("共 233 个");
+    expect(withTotals).toContain("需要更多就调大 maxLevels");
+  });
+
   it("截断时渲染出截掉的条数", () => {
     expect(levelsBlocks({ ...ok, truncated: 3 })[0]!.text).toContain("截掉 3 条");
     expect(levelsBlocks(ok)[0]!.text).not.toContain("截掉");

@@ -353,3 +353,43 @@ describe("价位也接受时间跨度", () => {
     expect(result.grounding.barsUsed).toBeGreaterThanOrEqual(720);
   });
 });
+
+describe("价位工具的默认上限（别把几百个枢轴塞给模型）", () => {
+  /** 造一段枢轴密集的行情：正弦叠加，左右各 2 根的小波动很多。 */
+  const dense: Candle[] = Array.from({ length: 400 }, (_, i) => {
+    // 周期约 5 根的振荡：左右各 2 根的窗口下枢轴密集（贴近真实那次 720 根 → 233 个）。
+    const base = 100 + Math.sin(i * 1.2) * 3 + i * 0.02;
+    return { time: i * 3_600, open: base - 0.2, high: base + 0.6, low: base - 0.6, close: base, volume: 10 };
+  });
+  const denseProvider: MarketDataProvider = {
+    fetchCandles: async () => dense,
+    fetchDerivatives: async (symbol) => ({ symbol }),
+  };
+  const NOW = 500 * 3_600 * 1000;
+
+  it("缺省时枢轴与价位都受默认上限约束，但 counts 仍报总数", async () => {
+    const result = await requestLevelFacts(denseProvider, { symbol: "BTC", interval: "1h" }, { now: NOW });
+    expect(result.ok).toBe(true);
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.counts.pivots).toBeGreaterThan(result.pivots.length);   // 总数 > 返回数
+    expect(result.pivots.length).toBeLessThanOrEqual(20);
+    // 每侧至多 5 条（斐波那契不占额度）
+    const perSide = (kind: "support" | "resistance") =>
+      result.levels.filter((level) => level.kind === kind).length;
+    expect(perSide("support")).toBeLessThanOrEqual(5);
+    expect(perSide("resistance")).toBeLessThanOrEqual(5);
+    expect(result.truncated).toBeGreaterThan(0);
+  });
+
+  it("斐波那契不因默认上限被丢掉", async () => {
+    const result = await requestLevelFacts(denseProvider, { symbol: "BTC", interval: "1h", kinds: ["fib"] }, { now: NOW });
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.levels.filter((level) => level.kind === "fib")).toHaveLength(5);
+  });
+
+  it("显式传 maxLevels 时按其语义（全局按触碰次数降序），不再叠加每侧默认", async () => {
+    const result = await requestLevelFacts(denseProvider, { symbol: "BTC", interval: "1h", maxLevels: 3 }, { now: NOW });
+    if (result.ok !== true) throw new Error("expected ok");
+    expect(result.levels).toHaveLength(3);
+  });
+});

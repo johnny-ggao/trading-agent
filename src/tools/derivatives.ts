@@ -30,7 +30,7 @@ export function derivativesBlocks(value: DerivativesToolValue): TextBlock[] {
   }
   const blocks: TextBlock[] = [{
     type: "text",
-    text: `${String(value.symbol)} 的${String(value.source ?? "")}永续数据（机械事实）：${JSON.stringify(value.snapshot)}`,
+    text: `${String(value.symbol)} 的永续数据（来源 ${String(value.source ?? "未知")}，机械事实）：${JSON.stringify(value.snapshot)}`,
   }];
   if (value.predictedFunding !== undefined) {
     blocks.push({ type: "text", text: `跨场所预测资金费：${JSON.stringify(value.predictedFunding)}` });

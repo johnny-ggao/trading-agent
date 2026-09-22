@@ -11,6 +11,7 @@ import { computeIndicatorFacts, warmupBarsFor, type IndicatorFact, type Indicato
 import { DEFAULT_INDICATORS } from "./indicators";
 import { computeLevelFacts, type LevelFact, type LevelKind, type LevelPivot } from "./levelFacts";
 import { computeMarketContext } from "./context";
+import { nearestPerSide } from "./candidates";
 import { lookbackBars } from "./lookback";
 import { computeResonance, higherInterval } from "./multiTimeframe";
 import { resolveInterval, type Interval } from "./timeframe";
@@ -95,6 +96,16 @@ const MIN_BARS_FOR_PIVOTS = 5;
 
 /** 市场状态（ADX/ATR/量能）至少要这么多根才有意义。 */
 const MIN_BARS_FOR_CONTEXT = 15;
+
+/**
+ * 价位工具的**默认**上限：不显式指定时，每侧最多回几条价位、最多回几个枢轴。
+ *
+ * 起因（实测）：30 天窗口的 `trading_levels` 回了 233 个枢轴 + 29 条价位，共 17.5 KB，
+ * 而模型只用到其中 6 条左右。`counts` 仍报**总数**，所以设默认上限不隐藏信息——
+ * 只是不再把整段历史塞进上下文。模型显式传 `maxLevels` 时照旧听它的。
+ */
+const DEFAULT_LEVELS_PER_SIDE = 5;
+const DEFAULT_PIVOT_LIMIT = 20;
 
 interface ClockOptions {
   now?: number;
@@ -321,15 +332,24 @@ export async function requestLevelFacts(
     ...(input.tolerancePct === undefined ? {} : { tolerancePct: input.tolerancePct }),
     ...(input.maxLevels === undefined ? {} : { maxLevels: input.maxLevels }),
   });
+
+  // 显式指定 maxLevels 时按其语义（全局按触碰次数降序）；缺省时每侧取最近的若干条并保留斐波那契。
+  const lastClose = series.candles.at(-1)?.close ?? 0;
+  const levels = input.maxLevels !== undefined
+    ? facts.levels
+    : [
+      ...nearestPerSide(facts.levels, lastClose, DEFAULT_LEVELS_PER_SIDE),
+      ...facts.levels.filter((level) => level.kind === "fib"),
+    ];
   return {
     ok: true,
     symbol: series.symbol,
     interval: series.interval,
     grounding: series.grounding,
-    pivots: facts.pivots,
-    levels: facts.levels,
+    pivots: facts.pivots.slice(-DEFAULT_PIVOT_LIMIT),
+    levels,
     counts: facts.counts,
-    truncated: facts.truncated,
+    truncated: facts.levels.length - levels.length,
   };
 }
 
