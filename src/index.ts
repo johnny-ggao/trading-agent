@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import Schema from "@deepseek-ai/schemastery";
 import { defineTool } from "@deepseek-ai/dsh-tools";
-import { CONFIDENCE_TOOL_NAME, TOOL_NAME } from "./shared/tool";
+import { CONFIDENCE_TOOL_NAME, INDICATOR_TOOL_NAME, LEVELS_TOOL_NAME, TOOL_NAME } from "./shared/tool";
 import { BinanceProvider } from "./market/binance";
 import { buildConfidenceEvidence, type ConfidenceDirection } from "./analysis/confidence";
 import {
@@ -13,6 +13,9 @@ import {
 } from "./analysis/typesafe";
 import { describeIndicators } from "./market/intent";
 import { buildAnchor } from "./market/anchor";
+import { requestIndicatorFacts, requestLevelFacts } from "./market/facts";
+import type { LevelKind } from "./market/levelFacts";
+import { parseIndicatorSelectors } from "./market/indicatorSpec";
 import { buildMarketView, chartRequestFromQuery, loadChart, type MarketView } from "./market/request";
 import { resolveSymbol } from "./market/symbol";
 import { resolveInterval } from "./market/timeframe";
@@ -146,6 +149,12 @@ function chartRouteHandler(): (req: IncomingMessage, res: ServerResponse) => Pro
   };
 }
 
+/** 把工具入参里的字符串窄化成合法价位类别；不认识的忽略（由 tool schema 描述约束）。 */
+function narrowLevelKinds(values: string[]): LevelKind[] {
+  const allowed: LevelKind[] = ["support", "resistance", "fib", "pivots"];
+  return allowed.filter((kind) => values.includes(kind));
+}
+
 /**
  * 注册随包 skill、trading_chart 工具、trading_confidence 工具与换图端点。
  * 插件配置（TypeSafe key 等）在「设置 → 插件 → trading-agent」里编辑。
@@ -244,6 +253,176 @@ export function apply(ctx: HostContext, config: Config): void {
           context: anchor.context as unknown as Json,
           hint: anchor.hint,
           chartSpec: view.spec as unknown as Json,
+        };
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: INDICATOR_TOOL_NAME,
+      description:
+        "按需计算技术指标值（ADR-0008：代码算、你选）。只算你点名的指标，返回每个指标的"
+        + "归一化参数、需要的预热根数、最新值与最近若干个值。**只用已收盘 K 线**，"
+        + "并回传 grounding（最后一根已收盘 bar、用了多少根）。"
+        + "indicators 用紧凑字符串：\"ma:50\"、\"ema:20\"、\"rsi:14\"、\"atr:14\"、\"macd:12/26/9\"、\"macd\"。"
+        + "每轮建议不超过 8 项且互相互补；需要更多可以再发一轮。"
+        + "数据不足以算出所请求的指标时返回 ok=false 并说明缺多少根，不要基于不足窗口下结论。",
+      parameters: {
+        symbol: { type: "string", required: true, description: "交易对或币种，与 trading_chart 一致。" },
+        interval: { type: "string", description: "周期：15m/1h/4h/1d 或时间词；默认与本次分析一致（1h）。" },
+        indicators: {
+          type: "array",
+          items: { type: "string" },
+          required: true,
+          description: "指标请求，例如 [\"ma:50\",\"ma:200\",\"rsi:14\",\"macd\"]。",
+        },
+      },
+      output: {
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            ok: { type: "boolean", required: true },
+            symbol: { type: "string" },
+            interval: { type: "string" },
+            grounding: { type: "json" },
+            indicators: { type: "json" },
+            reason: { type: "string" },
+            required: { type: "number" },
+            available: { type: "number" },
+            hint: { type: "string" },
+          },
+        },
+        render: (_args, value) => {
+          if (value.ok !== true) {
+            return [{
+              type: "text",
+              text: `未能给出指标值（${String(value.reason ?? "unknown")}）：需要 ${String(value.required ?? "?")} 根，`
+                + `当前只有 ${String(value.available ?? "?")} 根已收盘 K 线。${String(value.hint ?? "")}`,
+            }];
+          }
+          const grounding = value.grounding as { lastClosedBar?: number; barsUsed?: number } | undefined;
+          return [
+            {
+              type: "text",
+              text: `已收盘到 bar ${String(grounding?.lastClosedBar ?? "?")}（共 ${String(grounding?.barsUsed ?? "?")} 根，仅已收盘）：`,
+            },
+            { type: "text", text: JSON.stringify(value.indicators) },
+          ];
+        },
+      },
+      execute: async (args) => {
+        const result = await requestIndicatorFacts(provider, {
+          symbol: args.symbol,
+          interval: args.interval,
+          indicators: parseIndicatorSelectors(args.indicators),
+        });
+        if (result.ok !== true) {
+          return {
+            ok: false,
+            reason: result.reason,
+            required: result.required,
+            available: result.available,
+            hint: result.hint,
+          };
+        }
+        return {
+          ok: true,
+          symbol: result.symbol,
+          interval: result.interval,
+          grounding: result.grounding as unknown as Json,
+          indicators: result.indicators as unknown as Json,
+        };
+      },
+    }),
+  );
+
+  ctx.tools.register(
+    defineTool({
+      name: LEVELS_TOOL_NAME,
+      description:
+        "按需计算价位：支撑/阻力簇（含触碰次数与距现价百分比）、斐波那契回撤、swing 枢轴。"
+        + "粒度和取舍由你决定：tolerancePct 控制聚簇容差（默认 1）、pivotOptions 控制枢轴敏感度、"
+        + "maxLevels 控制返回条数（按触碰次数降序）。**只用已收盘 K 线**，每条价位附带形成它的"
+        + "枢轴时间，便于你在回答里引用具体日期与价位。",
+      parameters: {
+        symbol: { type: "string", required: true, description: "交易对或币种。" },
+        interval: { type: "string", description: "周期：15m/1h/4h/1d 或时间词。" },
+        kinds: {
+          type: "array",
+          items: { type: "string" },
+          description: "要哪几类：support / resistance / fib / pivots；缺省全要。",
+        },
+        tolerancePct: { type: "number", description: "聚簇容差（百分比），默认 1。越小簇越细。" },
+        maxLevels: { type: "number", description: "返回条数上限，按触碰次数降序；缺省不截断。" },
+      },
+      output: {
+        schema: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            ok: { type: "boolean", required: true },
+            symbol: { type: "string" },
+            interval: { type: "string" },
+            grounding: { type: "json" },
+            pivots: { type: "json" },
+            levels: { type: "json" },
+            counts: { type: "json" },
+            truncated: { type: "number" },
+            reason: { type: "string" },
+            required: { type: "number" },
+            available: { type: "number" },
+            hint: { type: "string" },
+          },
+        },
+        render: (_args, value) => {
+          if (value.ok !== true) {
+            return [{
+              type: "text",
+              text: `未能给出价位（${String(value.reason ?? "unknown")}）：需要至少 ${String(value.required ?? "?")} 根，`
+                + `当前只有 ${String(value.available ?? "?")} 根已收盘 K 线。${String(value.hint ?? "")}`,
+            }];
+          }
+          const counts = value.counts as Record<string, number> | undefined;
+          const grounding = value.grounding as { lastClosedBar?: number } | undefined;
+          return [
+            {
+              type: "text",
+              text: `已收盘到 bar ${String(grounding?.lastClosedBar ?? "?")}；`
+                + `各类条数 ${JSON.stringify(counts)}，本次返回 ${String((value.levels as unknown[] | undefined)?.length ?? 0)} 条`
+                + `${value.truncated === undefined || value.truncated === 0 ? "" : `（截掉 ${value.truncated} 条）`}。`,
+            },
+            { type: "text", text: JSON.stringify({ pivots: value.pivots, levels: value.levels }) },
+          ];
+        },
+      },
+      execute: async (args) => {
+        const result = await requestLevelFacts(provider, {
+          symbol: args.symbol,
+          interval: args.interval,
+          ...(args.kinds === undefined ? {} : { kinds: narrowLevelKinds(args.kinds) }),
+          ...(args.tolerancePct === undefined ? {} : { tolerancePct: args.tolerancePct }),
+          ...(args.maxLevels === undefined ? {} : { maxLevels: args.maxLevels }),
+        });
+        if (result.ok !== true) {
+          return {
+            ok: false,
+            reason: result.reason,
+            required: result.required,
+            available: result.available,
+            hint: result.hint,
+          };
+        }
+        return {
+          ok: true,
+          symbol: result.symbol,
+          interval: result.interval,
+          grounding: result.grounding as unknown as Json,
+          pivots: result.pivots as unknown as Json,
+          levels: result.levels as unknown as Json,
+          counts: result.counts as unknown as Json,
+          truncated: result.truncated,
         };
       },
     }),
