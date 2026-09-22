@@ -68,7 +68,11 @@ export interface ChartSpec {
   timeframes: string[];
   panes: PaneSpec[];
   series: SeriesSpec[];
-  formingBar?: boolean;
+  /**
+   * 尾部形成中（未收盘）K 线的根数。`formingIndex = candles.length - formingBars`，
+   * 客户端据此对这几根改用弱化样式；机械判断只认它之前已收盘的那些（见 market/closedCandles.ts）。
+   */
+  formingBars?: number;
   /** 图卡控件的当前状态；缺省表示不渲染控件。 */
   controls?: ChartControls;
   /** 规则信号等机械事件在价格图上的标记。 */

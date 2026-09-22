@@ -64,3 +64,49 @@ describe("skill 正文教模型怎么用 trading_chart", () => {
     expect(body).toContain("不要改动图表");
   });
 });
+
+describe("skill 正文的分层契约与不构成建议", () => {
+  const body = tradingChartSkill.content;
+
+  it("给出三层产出的显式顺序与各层职责", () => {
+    expect(body).toContain("规则信号（机械） → 结构/形态判断（模型） → 综合结论（模型）");
+    for (const layer of ["规则信号", "结构/形态判断", "综合结论"]) {
+      expect(body).toContain(layer);
+    }
+  });
+
+  it("要求结构/形态判断指出依据，依据不足就说不足以判定", () => {
+    expect(body).toContain("依据");
+    expect(body).toContain("不足以判定");
+  });
+
+  it("要求结论三件套齐全", () => {
+    expect(body).toContain("方向 + 失效位 + 置信度");
+  });
+
+  it("规定判定只用已收盘 K 线", () => {
+    expect(body).toContain("已收盘 K 线");
+    expect(body).toContain("形成中");
+  });
+
+  it("明确不给交易建议，并列出禁止项与允许项", () => {
+    for (const banned of ["入场价", "止损止盈", "目标价", "仓位", "杠杆", "收益承诺"]) {
+      expect(body).toContain(banned);
+    }
+    expect(body).toContain("不提供交易建议");
+    expect(body).toContain("不构成投资建议");
+  });
+
+  it("失效位按「判读不成立」表述，而不是止损位", () => {
+    expect(body).toContain("不成立");
+    expect(body).toContain("不要写成");
+  });
+
+  it("说明图上只有 K 线/均线/支撑阻力，其余不上图", () => {
+    expect(body).toContain("K 线 + 均线");
+    expect(body).toContain("斐波那契回撤");
+    expect(body).toContain("枢轴点");
+    expect(body).toContain("规则信号箭头");
+    expect(body).toContain("不要说");
+  });
+});

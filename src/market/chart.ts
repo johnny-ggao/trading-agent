@@ -60,12 +60,18 @@ export function barsForInterval(
   return Math.min(Math.max(byLookback, floor), policy.maxBars);
 }
 
-/** 由 K 线 + 默认指标构造可渲染的 chartSpec。 */
+/**
+ * 由 K 线 + 默认指标构造可渲染的 chartSpec。
+ *
+ * `formingBars` 是尾部形成中（未收盘）K 线的根数，由调用方按收盘边界算出
+ * （见 `closedCandles.ts`）；这里只如实把它写进契约，供客户端换用弱化样式。
+ */
 export function buildChartSpec(
   symbol: string,
   interval: string,
   candles: Candle[],
   config: IndicatorConfig = DEFAULT_INDICATORS,
+  formingBars = 0,
 ): ChartSpec {
   const panes: PaneSpec[] = [
     { id: "price", title: "价格" },
@@ -85,7 +91,7 @@ export function buildChartSpec(
     timeframes: DEFAULT_TIMEFRAMES,
     panes,
     series,
-    formingBar: true,
+    formingBars,
     controls: {
       ma: [...config.ma],
       rsi: config.rsi ?? null,

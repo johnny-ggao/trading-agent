@@ -1,11 +1,13 @@
 import type { Candle, ChartSpec, LinePoint, SeriesSpec, SeriesType } from "../shared/chartSpec";
+import { muteFormingBars, type StyledCandle } from "./formColors";
 
 export type LightweightSeriesType = "Candlestick" | "Line" | "Histogram";
 
 export interface LightweightSeries {
   id: string;
   type: LightweightSeriesType;
-  data: Array<Candle | LinePoint>;
+  /** K 线序列可带逐根样式覆盖（`StyledCandle`），其余为原样的点。 */
+  data: Array<Candle | LinePoint | StyledCandle>;
   options: Record<string, unknown>;
 }
 
@@ -37,12 +39,17 @@ export function toLightweightPanes(spec: ChartSpec): LightweightPane[] {
   }
 
   const byId = new Map(panes.map((pane) => [pane.id, pane]));
+  const formingBars = spec.formingBars ?? 0;
   for (const series of spec.series) {
     const target = byId.get(series.pane) ?? panes[0]!;
+    // 形成中的 K 线只换样式：它仍在图上，但不参与任何机械判断（由宿主保证）。
+    const data = series.type === "candlestick"
+      ? muteFormingBars(series.data as Candle[], formingBars)
+      : series.data;
     target.series.push({
       id: series.id,
       type: TYPE_MAP[series.type],
-      data: series.data,
+      data,
       options: series.options ?? {},
     });
   }

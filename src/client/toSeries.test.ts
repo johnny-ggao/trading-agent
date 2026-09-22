@@ -38,4 +38,28 @@ describe("chartSpec → Lightweight Charts 映射", () => {
     const stray: ChartSpec = { ...spec, series: [{ id: "x", type: "line", pane: "nope", data: [] }] };
     expect(toLightweightPanes(stray)[0]!.series.map((s) => s.id)).toEqual(["x"]);
   });
+
+  it("formingBars 让尾部 K 线带上弱化色，指标线不受影响", () => {
+    const forming: ChartSpec = {
+      ...spec,
+      formingBars: 1,
+      series: [
+        {
+          id: "candles",
+          type: "candlestick",
+          pane: "price",
+          data: [
+            { time: 1, open: 1, high: 2, low: 0, close: 1.5 },
+            { time: 2, open: 2, high: 3, low: 1, close: 1.6 },
+          ],
+        },
+        { id: "ma20", type: "line", pane: "price", data: [{ time: 2, value: 1.2 }] },
+      ],
+    };
+    const panes = toLightweightPanes(forming);
+    const candles = panes[0]!.series.find((s) => s.id === "candles")!.data as Array<{ time: number; color?: string }>;
+    expect(candles[0]!.color).toBeUndefined();
+    expect(candles[1]!.color).toBeDefined();
+    expect(panes[0]!.series.find((s) => s.id === "ma20")!.data).toEqual([{ time: 2, value: 1.2 }]);
+  });
 });

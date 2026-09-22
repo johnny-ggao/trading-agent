@@ -30,32 +30,34 @@ describe("buildChartPresentation", () => {
     expect(levels).toEqual([
       { price: 7, label: "S", kind: "support", color: "#26a69a" },
       { price: 13, label: "R", kind: "resistance", color: "#ef5350" },
-      { price: 10, label: "Fib 50.0%", kind: "fib", color: "#787b86" },
     ]);
   });
 
-  it("枢轴写成精确价位的圆点标记", () => {
+  it("斐波那契位不上图（只在 candidates 里给模型）", () => {
+    const { levels } = buildChartPresentation(candidates, []);
+    expect(levels.some((level) => level.kind === "fib")).toBe(false);
+    expect(candidates.levels.some((level) => level.kind === "fib")).toBe(true);
+  });
+
+  it("枢轴点不上图", () => {
     const { markers } = buildChartPresentation(candidates, []);
-    expect(markers).toEqual([
-      { time: 3, position: "atPriceMiddle", shape: "circle", color: "#ef5350", price: 13 },
-      { time: 8, position: "atPriceMiddle", shape: "circle", color: "#26a69a", price: 7 },
-    ]);
+    expect(markers).toEqual([]);
   });
 
   it("均线排列进入 notes", () => {
     expect(buildChartPresentation(candidates, []).notes).toEqual(["多头排列 MA20>MA50"]);
   });
 
-  it("枢轴与规则信号标记合并后按时间排序", () => {
-    const { markers } = buildChartPresentation(candidates, signals);
-    expect(markers.map((marker) => marker.time)).toEqual([3, 5, 8]);
+  it("规则信号也不上图（仍原样返回给模型）", () => {
+    expect(buildChartPresentation(candidates, signals).markers).toEqual([]);
+    expect(signals.map((signal) => signal.kind)).toEqual(["ma-cross"]);
   });
 
   it("没有均线排列时 notes 为空", () => {
     expect(buildChartPresentation({ pivots: [], levels: [], lastPrice: 0 }, []).notes).toEqual([]);
   });
 
-  it("支撑阻力各只画现价最近的 3 条，斐波那契全画", () => {
+  it("支撑阻力各只画现价最近的 3 条", () => {
     const many: ChartCandidates = {
       pivots: [],
       lastPrice: 100,
@@ -71,6 +73,6 @@ describe("buildChartPresentation", () => {
         { kind: "fib", price: 99, label: "Fib 50.0%", touches: 0 },
       ],
     };
-    expect(buildChartPresentation(many, []).levels.map((level) => level.price)).toEqual([95, 90, 85, 105, 110, 115, 99]);
+    expect(buildChartPresentation(many, []).levels.map((level) => level.price)).toEqual([95, 90, 85, 105, 110, 115]);
   });
 });

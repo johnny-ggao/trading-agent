@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildMarketView, chartRequestFromQuery, loadChart } from "./request";
+import { buildMarketView, chartRequestFromQuery, loadChart, type MarketView } from "./request";
 import type { Candle } from "../shared/chartSpec";
 import type { MarketDataProvider } from "./types";
 
@@ -68,7 +68,7 @@ const breakoutCandles: Candle[] = [
 ];
 
 describe("loadChart 的机械层", () => {
-  it("产出 swing 枢轴与斐波那契位", async () => {
+  it("产出 swing 枢轴与斐波那契位（都只给模型、不上图）", async () => {
     const loaded = await loadChart(fakeProvider(trendCandles), { symbol: "BTC", timeframe: "1h" });
     expect(loaded.candidates.pivots).toEqual([
       { time: 3, price: 13, kind: "high" },
@@ -76,20 +76,16 @@ describe("loadChart 的机械层", () => {
     ]);
     expect(loaded.candidates.levels.filter((level) => level.kind === "fib")).toHaveLength(5);
     expect(loaded.spec.levels?.some((level) => level.kind === "support")).toBe(true);
-    expect(loaded.spec.levels?.some((level) => level.kind === "fib")).toBe(true);
-    expect(loaded.spec.markers).toEqual([
-      { time: 3, position: "atPriceMiddle", shape: "circle", color: "#ef5350", price: 13 },
-      { time: 8, position: "atPriceMiddle", shape: "circle", color: "#26a69a", price: 7 },
-    ]);
+    expect(loaded.spec.levels?.some((level) => level.kind === "fib")).toBe(false);
+    // 枢轴点也不画在图上：主图只留 K 线、均线与支撑阻力位。
+    expect(loaded.spec.markers).toBeUndefined();
   });
 
-  it("把突破信号写进 ruleSignals 与 chartSpec.markers", async () => {
+  it("突破信号仍在 ruleSignals 里，但不上图", async () => {
     const loaded = await loadChart(fakeProvider(breakoutCandles), { symbol: "BTC", timeframe: "1h" });
     const breakout = loaded.ruleSignals.find((signal) => signal.kind === "breakout-high");
     expect(breakout?.direction).toBe("bullish");
-    expect(loaded.spec.markers).toEqual([
-      { time: 4, position: "belowBar", shape: "arrowUp", color: "#26a69a", text: "突破前高" },
-    ]);
+    expect(loaded.spec.markers).toBeUndefined();
   });
 });
 
@@ -113,6 +109,105 @@ describe("buildMarketView（工具用：加市场状态与共振）", () => {
     expect(view.resonance.higherInterval).toBe("4h");
     expect(view.resonance.aligned).toBe(true);
     expect(view.resonance.summary).toContain("共振向上");
+  });
+});
+
+// ── 只用已收盘 K 线判定（工单 07 剩余项）────────────────────────────────────
+
+const HOUR = 3_600;
+
+/** 第 i 小时的 K 线时间（秒）。 */
+const hourTime = (i: number): number => i * HOUR;
+
+/** 末根形成中的那 4 根：前 3 根平淡，第 4 根（形成中）是「突破」。 */
+const formingTail: Candle[] = [
+  { time: hourTime(0), open: 10, high: 10, low: 10, close: 10, volume: 1 },
+  { time: hourTime(1), open: 10, high: 10, low: 10, close: 10, volume: 1 },
+  { time: hourTime(2), open: 10, high: 10, low: 10, close: 10, volume: 1 },
+  { time: hourTime(3), open: 30, high: 30, low: 30, close: 30, volume: 9 },
+];
+
+/**
+ * 先跌后回升、末根（形成中）继续上冲：已收盘数据里 RSI(14) 在 28h 只是 30.3（未超买），
+ * 一旦末根收盘就同时给出 RSI 超买与向上突破——正好用来分辨「谁在触发信号」。
+ */
+const formingReversal: Candle[] = Array.from({ length: 30 }, (_, i) => {
+  const close = i < 20 ? 100 - i : i === 29 ? 100 : 81 + (i - 20) * 0.5;
+  return { time: hourTime(i), open: close, high: close, low: close, close, volume: 1 };
+});
+
+/** now 取末根覆盖区间 [3h, 4h) 的正中间，保证末根被判定为形成中。 */
+const tailNow = 3.5 * HOUR * 1000;
+
+function viewOf(candles: Candle[], timeframe = "1h", now = tailNow): Promise<MarketView> {
+  return buildMarketView(
+    perIntervalProvider({ "1h": candles, "4h": candles }),
+    { symbol: "BTC", timeframe, rsi: 14 },
+    { now },
+  );
+}
+
+describe("机械判断只用已收盘 K 线", () => {
+  it("形成中的末根不触发突破，已收盘的同一形态才触发", async () => {
+    const forming = await viewOf(formingTail, "1h", 3.5 * HOUR * 1000);
+    expect(forming.ruleSignals).toEqual([]);
+    expect(forming.candidates.lastPrice).toBe(10);
+
+    // 同样 4 根，但把 now 推到末根收盘之后：突破成立。
+    const closed = await viewOf(formingTail, "1h", 4 * HOUR * 1000);
+    expect(closed.ruleSignals.map((signal) => signal.kind)).toEqual(["breakout-high"]);
+    expect(closed.candidates.lastPrice).toBe(30);
+  });
+
+  it("形成中的末根不参与 RSI 极值判定", async () => {
+    const forming = await viewOf(formingReversal, "1h", 29.5 * HOUR * 1000);
+    const formingKinds = forming.ruleSignals.map((signal) => signal.kind);
+    expect(formingKinds).toContain("rsi-oversold");
+    expect(formingKinds).not.toContain("rsi-overbought");
+
+    // 把 now 推过末根收盘：同一根 K 线收盘后才给出超买。
+    const closed = await viewOf(formingReversal, "1h", 30 * HOUR * 1000);
+    expect(closed.ruleSignals.map((signal) => signal.kind)).toContain("rsi-overbought");
+  });
+
+  it("形成中的末根仍画在图上，但它的指标点被截掉", async () => {
+    const view = await viewOf(formingReversal, "1h", 29.5 * HOUR * 1000);
+    expect(view.formingBars).toBe(1);
+    expect(view.spec.formingBars).toBe(1);
+
+    const candlesSeries = view.spec.series.find((series) => series.id === "candles")!;
+    expect(candlesSeries.data.map((point) => point.time)).toEqual(formingReversal.map((candle) => candle.time));
+
+    const rsiTimes = view.spec.series.find((series) => series.id === "rsi14")!.data.map((point) => point.time);
+    expect(rsiTimes.length).toBeGreaterThan(0);
+    expect(Math.max(...rsiTimes)).toBe(hourTime(28));
+
+    const volumeSeries = view.spec.series.find((series) => series.id === "volume")!;
+    expect(volumeSeries.data.at(-1)!.time).toBe(hourTime(28));
+  });
+
+  it("末根已收盘时没有形成中根，指标点保留到末根", async () => {
+    const view = await viewOf(formingReversal, "1h", 30 * HOUR * 1000);
+    expect(view.formingBars).toBe(0);
+    expect(view.spec.formingBars).toBe(0);
+    const volumeSeries = view.spec.series.find((series) => series.id === "volume")!;
+    expect(volumeSeries.data.at(-1)!.time).toBe(hourTime(29));
+  });
+
+  it("市场状态与共振都只用已收盘 K 线", async () => {
+    const bars: Candle[] = Array.from({ length: 400 }, (_, i) => {
+      const close = 100 + i;
+      return { time: hourTime(i), open: close - 1, high: close + 1, low: close - 1, close, volume: 10 };
+    });
+    const view = await buildMarketView(
+      perIntervalProvider({ "1h": bars, "4h": bars }),
+      { symbol: "BTC", timeframe: "1h" },
+      { now: (399.5 * HOUR) * 1000 }, // 末根（399h）形成中
+    );
+    expect(view.formingBars).toBe(1);
+    // 已收盘数据到 398h 为止；形成中的 399h 那根高点 499 不应进入判断。
+    const highs = view.candidates.pivots.filter((pivot) => pivot.kind === "high").map((pivot) => pivot.price);
+    expect(highs).not.toContain(499);
   });
 });
 

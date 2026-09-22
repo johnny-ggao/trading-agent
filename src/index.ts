@@ -175,6 +175,8 @@ export function apply(ctx: HostContext, config: Config): void {
         "画一张加密行情技术分析图，并自动在右侧栏的行情图 tab 中打开。数据来自 Binance 现货。"
         + "周期可传 15m/1h/4h/1d 或时间词（今天/这周/这月/短线）；可覆盖均线周期（ma），"
         + "RSI 默认关闭（传 rsi 周期即显示），布林带/KDJ/ATR 也按需开启。"
+        + "返回的机械数据只用已收盘 K 线算出，形成中（未收盘）的那根不参与任何信号与判断，"
+        + "画面上它会以弱化样式区分。只做技术面判读，不构成投资建议。"
         + "出图后如需校准置信度，再调用 trading_confidence。",
       parameters: {
         symbol: { type: "string", description: "交易对或币种，例如 BTC 或 BTCUSDT。" },
@@ -256,7 +258,8 @@ export function apply(ctx: HostContext, config: Config): void {
         "用 TypeSafe Jev 校准一个方向性结论的置信度：传入方向、失效位与结论理由，"
         + "宿主把 trading_chart 的机械证据与结论一起交给 Jev，返回支持度（含概率分布）、"
         + "校准置信度（0..1 与 高/中/低）与证据充分度。需要先对同一 symbol/interval 调用 trading_chart；"
-        + "未配置 TypeSafe API key 或调用失败时返回 ok=false，此时按你自己的判断给置信度并声明未校准。",
+        + "未配置 TypeSafe API key 或调用失败时返回 ok=false，此时按你自己的判断给置信度并声明未校准。"
+        + "它只校准一个判读的置信度，不产生也不背书任何交易建议。",
       parameters: {
         symbol: { type: "string", required: true, description: "与 trading_chart 一致的交易对或币种。" },
         interval: { type: "string", required: true, description: "结论对应的周期：15m/1h/4h/1d。" },

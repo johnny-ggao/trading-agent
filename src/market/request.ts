@@ -1,8 +1,10 @@
 import type { ChartCandidates, MarketContext, RuleSignal, TimeframeResonance } from "../shared/analysis";
 import type { Candle, ChartSpec, LinePoint, SeriesSpec } from "../shared/chartSpec";
-import { barsForInterval, buildChartSpec } from "./chart";
+import { barsForInterval, buildChartSpec, intervalToMs } from "./chart";
 import { computeCandidates } from "./candidates";
+import { allClosed, partitionCandles, type CandleClosure } from "./closedCandles";
 import { computeMarketContext } from "./context";
+import { computeIndicators } from "./indicators";
 import { resolveChartRequest, type ChartRequest, type ResolvedChartRequest } from "./intent";
 import { computeResonance, higherInterval } from "./multiTimeframe";
 import { buildChartPresentation } from "./presentation";
@@ -23,6 +25,13 @@ export interface LoadedChart {
 export interface MarketView extends LoadedChart {
   context: MarketContext;
   resonance: TimeframeResonance;
+  /** 尾部形成中 K 线的根数：0 或 1；它们不参与任何机械判断。 */
+  formingBars: number;
+}
+
+/** 需要「现在时刻」的调用点可注入它（测试用固定值复现收盘边界）。 */
+export interface ClockOptions {
+  now?: number;
 }
 
 /** 从指标 series 里取各均线最后一根的值（按周期升序）。 */
@@ -65,43 +74,82 @@ export function seriesSignalInputs(series: SeriesSpec[], lookback = 20): SignalI
   return inputs;
 }
 
+/**
+ * 截掉落在形成中 K 线上的指标点：形成中的那根只作为裸 K 线展示，
+ * 不让它带出「看起来像定论」的指标数值。K 线序列本身不动——形成中的那根要留在图上。
+ */
+function dropFormingPoints(series: SeriesSpec[], closure: CandleClosure): SeriesSpec[] {
+  if (closure.formingBars === 0 || closure.lastClosed === undefined) return series;
+  const throughTime = closure.lastClosed.time;
+  return series.map((item) => {
+    if (item.type === "candlestick") return item;
+    return { ...item, data: item.data.filter((point) => point.time <= throughTime) };
+  });
+}
+
 /** 由已取到的 K 线组装 chartSpec 与机械层（不含市场状态）。 */
-function assemble(resolved: ResolvedChartRequest, candles: Candle[]): LoadedChart {
-  const baseSpec = buildChartSpec(resolveSymbol(resolved.symbol), resolved.interval, candles, resolved.indicators);
-  const candidates = computeCandidates(candles, seriesMaValues(baseSpec.series));
-  const ruleSignals = computeRuleSignals(candles, seriesSignalInputs(baseSpec.series));
+function assemble(resolved: ResolvedChartRequest, closure: CandleClosure): LoadedChart {
+  const candles = closure.all;
+  const baseSpec = buildChartSpec(
+    resolveSymbol(resolved.symbol),
+    resolved.interval,
+    candles,
+    resolved.indicators,
+    closure.formingBars,
+  );
+  const spec: ChartSpec = { ...baseSpec, series: dropFormingPoints(baseSpec.series, closure) };
+  // 机械层一律只用已收盘 K 线：结构、价位、规则信号都不许被未收盘的跳动触发。
+  const closed = closure.closed;
+  const closedIndicators = computeIndicators(closed, resolved.indicators);
+  const candidates = computeCandidates(closed, seriesMaValues(closedIndicators));
+  const ruleSignals = computeRuleSignals(closed, seriesSignalInputs(closedIndicators));
   const presentation = buildChartPresentation(candidates, ruleSignals);
-  const spec: ChartSpec = {
-    ...baseSpec,
+  const withPresentation: ChartSpec = {
+    ...spec,
     ...(presentation.markers.length > 0 ? { markers: presentation.markers } : {}),
     ...(presentation.levels.length > 0 ? { levels: presentation.levels } : {}),
     ...(presentation.notes.length > 0 ? { notes: presentation.notes } : {}),
   };
-  return { spec, resolved, bars: candles.length, candidates, ruleSignals };
+  return { spec: withPresentation, resolved, bars: candles.length, candidates, ruleSignals };
 }
 
 /** 只取当前周期的 K 线并构图（HTTP 端点用这条，避免多余的高周期取数）。 */
-export async function loadChart(provider: MarketDataProvider, request: ChartRequest): Promise<LoadedChart> {
+export async function loadChart(
+  provider: MarketDataProvider,
+  request: ChartRequest,
+  options: ClockOptions = {},
+): Promise<LoadedChart> {
   const resolved = resolveChartRequest(request);
   const limit = barsForInterval(resolved.interval, resolved.indicators);
   const candles = await provider.fetchCandles(resolved.symbol, resolved.interval, { limit });
-  return assemble(resolved, candles);
+  return assemble(resolved, partitionCandles(candles, resolved.interval, options.now ?? Date.now()));
 }
 
 /** 完整 MarketView：当前周期图表 + 市场状态 + 高一级周期的共振（工具用这条）。 */
-export async function buildMarketView(provider: MarketDataProvider, request: ChartRequest): Promise<MarketView> {
+export async function buildMarketView(
+  provider: MarketDataProvider,
+  request: ChartRequest,
+  options: ClockOptions = {},
+): Promise<MarketView> {
+  const now = options.now ?? Date.now();
   const resolved = resolveChartRequest(request);
   const limit = barsForInterval(resolved.interval, resolved.indicators);
   const candles = await provider.fetchCandles(resolved.symbol, resolved.interval, { limit });
-  const loaded = assemble(resolved, candles);
+  const closure = partitionCandles(candles, resolved.interval, now);
+  const loaded = assemble(resolved, closure);
 
-  const context = computeMarketContext(candles, resolved.indicators);
+  const context = computeMarketContext(closure.closed, resolved.indicators);
   const higher = higherInterval(resolved.interval);
   const higherCandles = await provider.fetchCandles(resolved.symbol, higher, {
     limit: barsForInterval(higher, resolved.indicators),
   });
-  const resonance = computeResonance(higher, computeMarketContext(higherCandles, resolved.indicators), context);
-  return { ...loaded, context, resonance };
+  const higherClosure = partitionCandles(higherCandles, higher, now);
+  const resonance = computeResonance(
+    higher,
+    computeMarketContext(higherClosure.closed, resolved.indicators),
+    context,
+  );
+  return { ...loaded, context, resonance, formingBars: closure.formingBars };
 }
 
 /** 图卡控件把目标状态放在 URL 查询串里；缺省字段留给默认填充。 */
