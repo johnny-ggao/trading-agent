@@ -312,3 +312,18 @@ describe("skill v3：把结论里的价位补画到图上（工单 13）", () =>
     expect(body).toContain("不是算出来的候选");
   });
 });
+
+describe("skill v3：Jev 的四项原始输出不许被精简掉", () => {
+  const body = tradingChartSkill.content;
+
+  it("要求完整给出支持度/置信度/充分度/概率分布", () => {
+    expect(body).toContain("必须完整给出 Jev 的四项原始输出");
+    expect(body).toContain("证据充分度");
+    expect(body).toContain("概率分布");
+  });
+
+  it("明确这些数字不受长度预算约束、不得省略或改写", () => {
+    expect(body).toContain("不受长度预算约束");
+    expect(body).toContain("不得改写、不得四舍五入、不得省略");
+  });
+});
