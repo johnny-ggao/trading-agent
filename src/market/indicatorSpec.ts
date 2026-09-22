@@ -4,70 +4,60 @@
  * 让模型填一个紧凑字符串比让它构造嵌套 JSON 更不容易出错：
  *   "ma:50"、"ema:20"、"rsi:14"、"atr:14"、"macd:12/26/9"、"macd"
  * 解析失败一律**抛错并指出是哪一项**——不认识的指标被静默丢弃会让模型以为它算了。
+ *
+ * **校验规则全部从指标清单推导**（参数名、个数、是否整数），本模块不再手写 id 白名单与
+ * arity 分支：加一个指标只改 `indicatorCatalog.ts`。
  */
 import type { IndicatorSelector } from "./indicatorFacts";
-
-/** 只有周期一个参数的指标。 */
-const PERIOD_ONLY = new Set(["ma", "ema", "rsi", "atr", "vwma", "mfi", "adx"]);
+import { paramNamesOf, paramSpecsOf, resolveIndicatorId, type IndicatorId } from "./indicatorCatalog";
 
 /** 解析单条请求文本。 */
 function parseOne(raw: string): IndicatorSelector {
   const [name, ...rest] = raw.split(":").map((part) => part.trim());
-  const id = (name ?? "").toLowerCase();
+  const id = resolveIndicatorId(name ?? "");
+  if (id === undefined) {
+    throw new Error(`不认识的指标 ${JSON.stringify((name ?? "").trim())}（原文 "${raw}"）；请只用清单里列出的 id`);
+  }
+
+  const names = paramNamesOf(id);
+  const specs = paramSpecsOf(id);
   const args = rest.join(":").split("/").map((part) => part.trim()).filter((part) => part !== "");
+  const allOptional = names.every((param) => specs[param]!.default !== undefined);
 
-  if (PERIOD_ONLY.has(id)) {
-    if (args.length !== 1) {
-      throw new Error(`指标 "${raw}" 需要且只需要一个周期参数，例如 "${id}:14"`);
+  if (args.length === 0) {
+    if (names.length > 0 && !allOptional) {
+      throw new Error(`指标 "${raw}" 需要 ${names.length} 个参数（${names.join("/")}），例如 "${exampleFor(id)}"`);
     }
-    const period = Number(args[0]);
-    if (!Number.isInteger(period) || period <= 0) {
-      throw new Error(`指标 "${raw}" 的周期必须是正整数，收到 "${args[0]}"`);
-    }
-    return { id: id as "ma" | "ema" | "rsi" | "atr" | "vwma" | "mfi" | "adx", period };
+    return { id } as IndicatorSelector;
   }
 
-  if (id === "obv") {
-    if (args.length !== 0) throw new Error(`指标 "${raw}" 不接受参数，直接写 "obv"`);
-    return { id: "obv" };
+  if (args.length !== names.length) {
+    throw new Error(
+      `指标 "${raw}" 需要 ${names.length} 个参数（${names.join("/")}），收到 ${args.length} 个；例如 "${exampleFor(id)}"`,
+    );
   }
 
-  if (id === "bollinger" || id === "bollingerupper" || id === "bollingerlower") {
-    const normalised = id === "bollinger" ? "bollinger" : id === "bollingerupper" ? "bollingerUpper" : "bollingerLower";
-    if (args.length === 0) return { id: normalised } as IndicatorSelector;
-    if (args.length !== 2) throw new Error(`指标 "${raw}" 需要 0 或 2 个参数（period/deviation），例如 "bollinger:20/2"`);
-    const [period, deviation] = args.map(Number);
-    if (period === undefined || deviation === undefined || !Number.isInteger(period) || period <= 0 || !Number.isFinite(deviation) || deviation <= 0) {
-      throw new Error(`指标 "${raw}" 的参数不合法（period 正整数、deviation 正数）`);
+  const params: Record<string, number> = {};
+  names.forEach((param, index) => {
+    const spec = specs[param]!;
+    const value = Number(args[index]);
+    const ok = Number.isFinite(value) && value > 0 && (spec.integer !== true || Number.isInteger(value));
+    if (!ok) {
+      throw new Error(
+        `指标 "${raw}" 的参数 ${param} 必须是正${spec.integer === true ? "整数" : "数"}，收到 ${JSON.stringify(args[index])}`,
+      );
     }
-    return { id: normalised, period, deviation } as IndicatorSelector;
-  }
+    params[param] = value;
+  });
+  return { id, ...params } as IndicatorSelector;
+}
 
-  if (id === "supertrend") {
-    if (args.length === 0) return { id: "supertrend" };
-    if (args.length !== 2) throw new Error(`指标 "${raw}" 需要 0 或 2 个参数（period/multiplier），例如 "supertrend:10/3"`);
-    const [period, multiplier] = args.map(Number);
-    if (period === undefined || multiplier === undefined || !Number.isInteger(period) || period <= 0 || !Number.isFinite(multiplier) || multiplier <= 0) {
-      throw new Error(`指标 "${raw}" 的参数不合法（period 正整数、multiplier 正数）`);
-    }
-    return { id: "supertrend", period, multiplier };
-  }
-
-  if (id === "macd") {
-    if (args.length === 0) return { id: "macd" };
-    if (args.length !== 3) {
-      throw new Error(`指标 "${raw}" 需要 0 或 3 个参数（fast/slow/signal），例如 "macd:12/26/9"`);
-    }
-    const [fast, slow, signal] = args.map(Number);
-    for (const value of [fast, slow, signal]) {
-      if (value === undefined || !Number.isInteger(value) || value <= 0) {
-        throw new Error(`指标 "${raw}" 的参数必须是正整数，收到 "${args.join("/")}"`);
-      }
-    }
-    return { id: "macd", fast: fast!, slow: slow!, signal: signal! };
-  }
-
-  throw new Error(`不认识的指标 "${id}"（原文 "${raw}"）；请只用清单里列出的 id`);
+/** 构造示例写法（用于报错里给出正确形态）。 */
+function exampleFor(id: IndicatorId): string {
+  const names = paramNamesOf(id);
+  if (names.length === 0) return id;
+  const values = names.map((param) => paramSpecsOf(id)[param]!.default ?? 10);
+  return `${id}:${values.join("/")}`;
 }
 
 /** 解析一组请求文本，顺序原样保留。 */
