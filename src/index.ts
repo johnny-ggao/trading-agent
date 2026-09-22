@@ -5,6 +5,14 @@ import { CONFIDENCE_TOOL_NAME, INDICATOR_TOOL_NAME, LEVELS_TOOL_NAME, TOOL_NAME 
 import { BinanceProvider } from "./market/binance";
 import { buildConfidenceEvidence, type ConfidenceDirection } from "./analysis/confidence";
 import {
+  DEFAULT_EVIDENCE_TTL_MS,
+  DEFAULT_HIGH_THRESHOLD,
+  DEFAULT_MEDIUM_THRESHOLD,
+  normalizeAnalysisConfig,
+  type AnalysisConfig,
+  type AnalysisConfigInput,
+} from "./analysis/pluginConfig";
+import {
   ConfidenceUnavailableError,
   DEFAULT_TYPESAFE_BASE_URL,
   DEFAULT_TYPESAFE_MODEL,
@@ -49,14 +57,14 @@ export interface Config {
 }
 
 export const Config = Schema.object({
-  apiKey: Schema.string().role("secret").default(""),
+  apiKey: Schema.string().role("secret"),
   apiKeyEnv: Schema.string().role("credential-ref").default("TYPESAFE_API_KEY"),
   baseURL: Schema.string().default(DEFAULT_TYPESAFE_BASE_URL),
   model: Schema.string().default(DEFAULT_TYPESAFE_MODEL),
   timeoutMs: Schema.number().step(1).min(1000).default(DEFAULT_TYPESAFE_TIMEOUT_MS),
-  highThreshold: Schema.number().min(0).max(1).default(0.7),
-  mediumThreshold: Schema.number().min(0).max(1).default(0.4),
-  evidenceTtlMs: Schema.number().step(1).min(0).default(300000),
+  highThreshold: Schema.number().min(0).max(1).default(DEFAULT_HIGH_THRESHOLD),
+  mediumThreshold: Schema.number().min(0).max(1).default(DEFAULT_MEDIUM_THRESHOLD),
+  evidenceTtlMs: Schema.number().step(1).min(0).default(DEFAULT_EVIDENCE_TTL_MS),
 });
 
 interface SettingsSectionHooksLike {
@@ -114,10 +122,9 @@ function viewCacheKey(symbol: string, interval: string): string {
 }
 
 /** 解析 TypeSafe API key：设置里的字面值 → credentials 服务（env 名）→ 进程环境变量。 */
-async function resolveTypesafeKey(ctx: HostContext, config: Config): Promise<string | undefined> {
-  const literal = config.apiKey.trim();
-  if (literal !== "") return literal;
-  const ref = config.apiKeyEnv.trim() === "" ? "TYPESAFE_API_KEY" : config.apiKeyEnv.trim();
+async function resolveTypesafeKey(ctx: HostContext, config: AnalysisConfig): Promise<string | undefined> {
+  if (config.apiKey !== "") return config.apiKey;
+  const ref = config.apiKeyEnv;
   const credentials = ctx.get?.("credentials") as CredentialProviderLike | undefined;
   if (credentials !== undefined && typeof credentials.resolve === "function") {
     try {
@@ -159,13 +166,16 @@ function narrowLevelKinds(values: string[]): LevelKind[] {
  * 注册随包 skill、trading_chart 工具、trading_confidence 工具与换图端点。
  * 插件配置（TypeSafe key 等）在「设置 → 插件 → trading-agent」里编辑。
  */
-export function apply(ctx: HostContext, config: Config): void {
-  let current: () => Config = () => config;
+export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
+  // settings.yaml 里没有本插件段时传入的是 {}：先兜底，避免任何读取抛错。
+  const config: AnalysisConfig = normalizeAnalysisConfig(rawConfig);
+  let current: () => AnalysisConfig = () => config;
   ctx.inject(["settings"], (settingsCtx) => {
     if (settingsCtx.settings === undefined) return;
     settingsCtx.settings.installSection(ctx, "trading-agent", Config, config, {
       setSource: (source) => {
-        current = source;
+        // 设置页回传的可能是部分字段：同样兜底一次。
+        current = () => normalizeAnalysisConfig(source());
       },
       onChange: () => {},
     });

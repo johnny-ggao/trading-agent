@@ -208,3 +208,22 @@
   可收紧为实测值。
 - **MACD 只给了主线 DIF**（`macd:12/26/9` 的 `latest` 是 DIF）；histogram 与 signal 的单独取法
   尚未暴露，模型若需要需再扩选择器。
+
+## 回归修复（2026-09-22，用户发现）
+
+**`trading_confidence` 在 settings.yaml 没有本插件段时整个崩溃**：DSH 传入的 config 是 `{}`，
+而 `resolveTypesafeKey` 直接读 `config.apiKey.trim()` → `TypeError: Cannot read properties of
+undefined (reading 'trim')`。表现就是用户看到的"JEV 置信度评分没有了"——每次调用都抛错，
+模型只能退回自评。
+
+根因：`Config` schema 的字段默认值只在走 schema 解析时生效；插件由 `apply(ctx, config)` 直接
+拿到原始传入值时并不经过它，`{}` 便一路漏到读取点。同类隐患覆盖 `apiKeyEnv` / `baseURL` /
+`model` / `timeoutMs` / 两个阈值 / `evidenceTtlMs`。
+
+修复：新增 `src/analysis/pluginConfig.ts` 的 `normalizeAnalysisConfig()`——
+空串与缺失一律回落默认、阈值越界回落、超时非正回落；`apply` 入参放宽为可选并在入口兜底一次，
+`setSource` 回传的部分配置同样兜底。5 条单测覆盖空对象、undefined、部分配置、显式空串、
+越界阈值。修复后空配置下真实调用返回 `ok=false, reason=credentials_missing`（干净降级）。
+
+**仍需用户配置 TypeSafe API key** 才能真正拿到 Jev 评分：本机 credentials、环境变量、
+settings.yaml 三处都没有该引用（已排查，未打印任何值）。
