@@ -14,19 +14,18 @@
 
 ## 一键启动（推荐给不熟悉命令行的同事）
 
-把这两样放在**同一个文件夹**里发给同事：
+把这两样放在**同一个文件夹**里发给同事（macOS / Linux）：
 
-- `start.sh`（macOS / Linux）或 `start.ps1`（Windows）
+- `start.sh`
 - `dsh-trading-agent-0.1.0.tgz`（预构建插件；脚本会自动优先使用同目录的 tgz，无需构建）
 
-macOS / Linux：终端执行 `bash start.sh`。
-Windows：在 PowerShell 里执行 `powershell -ExecutionPolicy Bypass -File .\start.ps1`。
+终端执行 `bash start.sh`。
 
 脚本会自动完成：识别平台 → 缺 Node 就下载本地 Node（≥20）→ 缺 pnpm 就装到 `~/.dsh-trading-agent` → 缺 DSH 就装 `@deepseek-ai/dsh@0.1.6-alpha.2` → 把插件加入 `web` profile → 启动 DSH 并打开浏览器。**全程不需要管理员权限，也不改系统安装**（缺什么就装到 `~/.dsh-trading-agent` 下自用）。
 
-安装过程会显示每一步的进度与耗时，下载带进度条；每一步日志实时输出，并保存在 `~/.dsh-trading-agent/logs/`（Windows 为 `%USERPROFILE%\.dsh-trading-agent\logs\`），失败时自动打印日志末尾。
+安装过程会显示每一步的进度与耗时，下载带进度条；每一步日志实时输出，并保存在 `~/.dsh-trading-agent/logs/`，失败时自动打印日志末尾。
 
-常用参数：`--profile desktop` / `-Profile desktop`（桌面端）、`--spec ...` / `-Spec ...`（改用 GitHub 或本地源）、`--no-start` / `-NoStart`、`--toolchain-only` / `-ToolchainOnly`、`--dry-run` / `-DryRun`、`--help` / `-Help`。
+常用参数：`--profile desktop`（桌面端）、`--spec ...`（改用 GitHub 或本地源）、`--no-start`、`--toolchain-only`、`--dry-run`、`--help`。
 
 要求：能访问 npm 与 nodejs.org；首次启动会初始化 profile 并下载 DSH 依赖，需要几分钟。DSH 还需要一个**模型 provider / API key** 才能对话（首次 onboarding 里配置）；插件出图不需要 key。
 
@@ -144,7 +143,7 @@ pnpm run typecheck
 - `src/analysis/`：模型调用层（Jev 置信度校准的纯逻辑与官方 SDK 适配）。
 - `src/client/`：客户端半边（图卡、侧栏 tab、自动打开、配置页）。
 - `src/shared/`、`src/skill/`、`assets/`：契约、skill 与正文。
-- `start.sh` / `start.ps1`：一键启动脚本（缺 Node/pnpm/DSH 时自动本地补齐）。
+- `start.sh`：一键启动脚本（缺 Node/pnpm/DSH 时自动本地补齐）。
 
 ## 重载开发
 
