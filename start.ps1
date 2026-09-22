@@ -76,6 +76,8 @@ dsh-trading-agent 一键启动（Windows）
 
 环境变量：NODE_VERSION DSH_VERSION PNPM_VERSION FORCE_LOCAL_NODE=1
 
+要求：Node ≥ 20；pnpm > 10（缺失时用 Node 自带的 corepack 自动准备，不需要全局安装）。
+
 安装过程会显示进度（下载有进度条）并把每一步日志实时输出，同时保存到 <Home>\logs\。
 "@ | Write-Host
   exit 0
@@ -125,26 +127,47 @@ function Ensure-Node {
   Write-Host "    本地 Node：$(& node -v)"
 }
 
+function Get-PnpmMajor {
+  try { return [int]((& pnpm --version).Trim().Split(".")[0]) } catch { return 0 }
+}
+
 function Ensure-Pnpm {
-  if (Get-Command pnpm -ErrorAction SilentlyContinue) { Step "准备 pnpm"; Write-Host "    使用系统 pnpm $(& pnpm --version)"; return }
-  ${prefix} = Join-Path ${Home} "pnpm"
-  ${sb} = { & npm install --prefix ${prefix} --no-audit --no-fund --loglevel=http "pnpm@${PnpmVersion}" }.GetNewClosure()
-  Run-Step "安装 pnpm@${PnpmVersion}" (Join-Path ${LogDir} "pnpm-install.log") ${sb}
-  $env:Path = "${prefix}\node_modules\.bin;$env:Path"
+  if (Get-Command pnpm -ErrorAction SilentlyContinue) {
+    if ((Get-PnpmMajor) -gt 10) { Step "准备 pnpm（要求 > 10）"; Write-Host "    使用系统 pnpm $(& pnpm --version)"; return }
+    Warn "系统 pnpm 版本 $(& pnpm --version) 不满足 >10，准备本地 pnpm $PnpmVersion"
+  }
+  Step "准备 pnpm > 10（本地 pnpm $PnpmVersion）"
+  if ($DryRun) { Write-Host "    [dry-run] 用 corepack 准备 pnpm@$PnpmVersion"; return }
+  $binDir = Join-Path $Home "toolchain\bin"
+  New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+  if (Get-Command corepack -ErrorAction SilentlyContinue) {
+    $shim = Join-Path $binDir "pnpm.cmd"
+    Write-Host "    用 corepack 固定 pnpm@$PnpmVersion（shim: $shim）"
+    Set-Content -Path $shim -Value @("@echo off", "corepack pnpm@$PnpmVersion %*") -Encoding ASCII
+    $env:Path = "$binDir;$env:Path"
+  } else {
+    Warn "未找到 corepack，退回用 npm 引导安装 pnpm"
+    $prefix = Join-Path $Home "pnpm"
+    $sb = { & npm install --prefix $prefix --no-audit --no-fund --loglevel=http "pnpm@$PnpmVersion" }.GetNewClosure()
+    Run-Step "安装 pnpm@$PnpmVersion（npm 引导）" (Join-Path $LogDir "pnpm-install.log") $sb
+    $env:Path = "$prefix\node_modules\.bin;$env:Path"
+  }
   Write-Host "    本地 pnpm：$(& pnpm --version)"
 }
 
 function Ensure-Dsh {
-  ${dsh} = Get-Command dsh -ErrorAction SilentlyContinue
-  if (${dsh}) {
-    ${v} = (& dsh --version 2>${null} | Select-Object -Last 1)
-    if ("${v}" -like "0.1.6*") { Step "准备 DSH"; Write-Host "    使用系统 dsh ${v}"; return }
-    Warn "系统 dsh 版本 ${v} 与所需 ${DshVersion} 不一致，改装本地 dsh"
+  $dsh = Get-Command dsh -ErrorAction SilentlyContinue
+  if ($dsh) {
+    $v = (& dsh --version 2>$null | Select-Object -Last 1)
+    if ("$v" -like "0.1.6*") { Step "准备 DSH"; Write-Host "    使用系统 dsh $v"; return }
+    Warn "系统 dsh 版本 $v 与所需 $DshVersion 不一致，改装本地 dsh"
   }
-  ${prefix} = Join-Path ${Home} "dsh"
-  ${sb} = { & npm install --prefix ${prefix} --no-audit --no-fund --loglevel=http "@deepseek-ai/dsh@${DshVersion}" }.GetNewClosure()
-  Run-Step "安装 @deepseek-ai/dsh@${DshVersion}" (Join-Path ${LogDir} "dsh-install.log") ${sb}
-  $env:Path = "${prefix}\node_modules\.bin;$env:Path"
+  $prefix = Join-Path $Home "dsh"
+  New-Item -ItemType Directory -Force -Path $prefix | Out-Null
+  $sb = { & pnpm --config.strict-dep-builds=false --dir $prefix add "@deepseek-ai/dsh@$DshVersion" }.GetNewClosure()
+  Run-Step "用 pnpm 安装 @deepseek-ai/dsh@$DshVersion" (Join-Path $LogDir "dsh-install.log") $sb
+  $env:Path = "$prefix\node_modules\.bin;$env:Path"
+  Write-Host "    注：pnpm 默认跳过依赖的原生构建脚本（node-pty 等），出图不受影响"
   Write-Host "    本地 dsh：$(& dsh --version | Select-Object -Last 1)"
 }
 

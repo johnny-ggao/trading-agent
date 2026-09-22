@@ -9,7 +9,7 @@
 ## 前置条件
 
 - **DSH 0.1.6-alpha.2 或兼容版本**。本插件用到该版本的右侧栏（`sidebarRight` / `sidebarRightTabs`）、`conversation.chat.turnTail` 的 **list** 槽，以及插件管理页的 `plugins.row.config` 配置页；更早的版本（如 alpha.1）槽位声明不同，无法工作。
-- **Node.js ≥ 20**，以及 **pnpm**（`dsh plugin` 内部调用 pnpm）。
+- **Node.js ≥ 20**，以及 **pnpm > 10**（`dsh plugin` 与 profile 依赖都由 pnpm 安装；缺失时脚本用 Node 自带的 corepack 自动准备，不需要全局安装）。
 - 能访问 Binance 现货公共接口（`api.binance.com` 等）。
 
 ## 一键启动（推荐给不熟悉命令行的同事）

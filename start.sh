@@ -49,6 +49,8 @@ dsh-trading-agent 一键启动
 
 环境变量：PROFILE PLUGIN_SPEC AGENT_HOME NODE_VERSION DSH_VERSION PNPM_VERSION FORCE_LOCAL_NODE=1
 
+要求：Node ≥ 20；pnpm > 10（缺失时用 Node 自带的 corepack 自动准备，不需要全局安装）。
+
 安装过程会显示进度（下载有进度条）并把每一步日志实时输出，同时保存到 <AGENT_HOME>/logs/。
 USAGE
 }
@@ -114,6 +116,8 @@ run_step() {
   fi
 }
 
+pnpm_major() { pnpm --version 2>/dev/null | cut -d. -f1; }
+
 node_major() { node -v 2>/dev/null | sed 's/^v//' | cut -d. -f1; }
 
 ensure_node() {
@@ -150,25 +154,49 @@ ensure_node() {
 
 ensure_pnpm() {
   if command -v pnpm >/dev/null 2>&1; then
-    step "准备 pnpm"
-    printf '    使用系统 pnpm %s\n' "$(pnpm --version)"
+    major_pnpm="$(pnpm_major || echo 0)"
+    if [ "${major_pnpm}" -gt 10 ] 2>/dev/null; then
+      step "准备 pnpm（要求 > 10）"
+      printf '    使用系统 pnpm %s\n' "$(pnpm --version)"
+      return 0
+    fi
+    warn "系统 pnpm 版本 $(pnpm --version 2>/dev/null) 不满足 >10，准备本地 pnpm ${PNPM_VERSION}"
+  fi
+  step "准备 pnpm > 10（本地 pnpm ${PNPM_VERSION}）"
+  if [ "${DRY_RUN}" = "1" ]; then
+    printf '    [dry-run] 用 corepack 准备 pnpm@%s\n' "${PNPM_VERSION}"
     return 0
   fi
-  run_step "安装 pnpm@${PNPM_VERSION}" "${LOG_DIR}/pnpm-install.log" npm install --prefix "${AGENT_HOME}/pnpm" --no-audit --no-fund --loglevel=http "pnpm@${PNPM_VERSION}"
-  export PATH="${AGENT_HOME}/pnpm/node_modules/.bin:${PATH}"
+  BIN_DIR="${AGENT_HOME}/toolchain/bin"
+  mkdir -p "${BIN_DIR}"
+  if command -v corepack >/dev/null 2>&1; then
+    printf '    用 corepack 固定 pnpm@%s（shim: %s/pnpm）\n' "${PNPM_VERSION}" "${BIN_DIR}"
+    cat > "${BIN_DIR}/pnpm" <<EOF
+#!/usr/bin/env sh
+exec corepack pnpm@${PNPM_VERSION} "\$@"
+EOF
+    chmod +x "${BIN_DIR}/pnpm"
+  else
+    warn "未找到 corepack，退回用 npm 引导安装 pnpm"
+    run_step "安装 pnpm@${PNPM_VERSION}（npm 引导）" "${LOG_DIR}/pnpm-install.log" npm install --prefix "${AGENT_HOME}/pnpm" --no-audit --no-fund --loglevel=http "pnpm@${PNPM_VERSION}"
+    BIN_DIR="${AGENT_HOME}/pnpm/node_modules/.bin"
+  fi
+  export PATH="${BIN_DIR}:${PATH}"
   printf '    本地 pnpm：%s\n' "$(pnpm --version)"
 }
 
 ensure_dsh() {
   if command -v dsh >/dev/null 2>&1; then
     v="$(dsh --version 2>/dev/null | tail -1)"
-    case "${v}" in
-      0.1.6*) step "准备 DSH"; printf '    使用系统 dsh %s\n' "${v}"; return 0 ;;
-      *) warn "系统 dsh 版本 ${v} 与所需 ${DSH_VERSION} 不一致，改装本地 dsh" ;;
+    case "$v" in
+      0.1.6*) step "准备 DSH"; printf '    使用系统 dsh %s\n' "$v"; return 0 ;;
+      *) warn "系统 dsh 版本 $v 与所需 ${DSH_VERSION} 不一致，改装本地 dsh" ;;
     esac
   fi
-  run_step "安装 @deepseek-ai/dsh@${DSH_VERSION}" "${LOG_DIR}/dsh-install.log" npm install --prefix "${AGENT_HOME}/dsh" --no-audit --no-fund --loglevel=http "@deepseek-ai/dsh@${DSH_VERSION}"
+  mkdir -p "${AGENT_HOME}/dsh"
+  run_step "用 pnpm 安装 @deepseek-ai/dsh@${DSH_VERSION}" "${LOG_DIR}/dsh-install.log" pnpm --config.strict-dep-builds=false --dir "${AGENT_HOME}/dsh" add "@deepseek-ai/dsh@${DSH_VERSION}"
   export PATH="${AGENT_HOME}/dsh/node_modules/.bin:${PATH}"
+  printf '    注：pnpm 默认跳过依赖的原生构建脚本（node-pty 等），出图不受影响\n'
   printf '    本地 dsh：%s\n' "$(dsh --version 2>/dev/null | tail -1)"
 }
 
