@@ -27,6 +27,10 @@ import { HyperliquidProvider } from "./market/hyperliquid";
 import { parseIndicatorSelectors } from "./market/indicatorSpec";
 import { failurePayload } from "./tools/contract";
 import { INDICATOR_OUTPUT_SCHEMA, indicatorBlocks, indicatorPayload } from "./tools/indicator";
+import { CHART_OUTPUT_SCHEMA, chartBlocks, chartPresentationMeta } from "./tools/chart";
+import { LEVELS_OUTPUT_SCHEMA, levelsBlocks } from "./tools/levels";
+import { DERIVATIVES_OUTPUT_SCHEMA, derivativesBlocks } from "./tools/derivatives";
+import { CONFIDENCE_OUTPUT_SCHEMA, confidenceBlocks } from "./tools/confidence";
 import type { IndicatorSelector } from "./market/indicatorFacts";
 import { buildMarketView, chartRequestFromQuery, loadChart, type MarketView } from "./market/request";
 import { resolveSymbol } from "./market/symbol";
@@ -232,47 +236,9 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         },
       },
       output: {
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            ok: { type: "boolean" },
-            reason: { type: "string" },
-            hint: { type: "string" },
-            symbol: { type: "string" },
-            interval: { type: "string" },
-            bars: { type: "number" },
-            formingBars: { type: "number" },
-            lastClose: { type: "number" },
-            lastClosedBar: { type: "number" },
-            context: { type: "json" },
-            resonance: { type: "json" },
-            chartSpec: { type: "json" },
-          },
-        },
-        render: (_args, value): Array<{ type: "text"; text: string }> => [
-          ...(value.ok === false
-            ? [{ type: "text" as const, text: `出图失败（${String(value.reason ?? "invalid_args")}）：${String(value.hint ?? "")}` }]
-            : []),
-          {
-            type: "text" as const,
-            text: `已渲染 ${value.symbol} / ${value.interval} 的 ${value.bars} 根 K 线（Binance 现货），`
-              + `已收盘到 bar ${String(value.lastClosedBar ?? "?")}，最新收盘价 ${String(value.lastClose)}。`,
-          },
-          {
-            type: "text",
-            text: `市场状态（机械事实，非结论）：${JSON.stringify(value.context)}`,
-          },
-          ...(value.resonance === undefined
-            ? []
-            : [{
-              type: "text" as const,
-              text: `周期比较（机械事实）：${JSON.stringify(value.resonance)}`,
-            }]),
-          { type: "text", text: String(value.hint) },
-        ],
-        // 失败时没有图可展示；返回空对象而不是 undefined（契约要求 JsonValue）。
-        presentationMeta: (_args, value) => value.chartSpec ?? {},
+        schema: CHART_OUTPUT_SCHEMA,
+        render: (_args, value) => chartBlocks(value),
+        presentationMeta: (_args, value) => chartPresentationMeta(value),
       },
       execute: async (args) => {
         let view: MarketView;
@@ -398,44 +364,8 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         },
       },
       output: {
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            ok: { type: "boolean", required: true },
-            symbol: { type: "string" },
-            interval: { type: "string" },
-            grounding: { type: "json" },
-            pivots: { type: "json" },
-            levels: { type: "json" },
-            counts: { type: "json" },
-            truncated: { type: "number" },
-            reason: { type: "string" },
-            required: { type: "number" },
-            available: { type: "number" },
-            hint: { type: "string" },
-          },
-        },
-        render: (_args, value) => {
-          if (value.ok !== true) {
-            return [{
-              type: "text",
-              text: `未能给出价位（${String(value.reason ?? "unknown")}）：需要至少 ${String(value.required ?? "?")} 根，`
-                + `当前只有 ${String(value.available ?? "?")} 根已收盘 K 线。${String(value.hint ?? "")}`,
-            }];
-          }
-          const counts = value.counts as Record<string, number> | undefined;
-          const grounding = value.grounding as { lastClosedBar?: number } | undefined;
-          return [
-            {
-              type: "text",
-              text: `已收盘到 bar ${String(grounding?.lastClosedBar ?? "?")}；`
-                + `各类条数 ${JSON.stringify(counts)}，本次返回 ${String((value.levels as unknown[] | undefined)?.length ?? 0)} 条`
-                + `${value.truncated === undefined || value.truncated === 0 ? "" : `（截掉 ${value.truncated} 条）`}。`,
-            },
-            { type: "text", text: JSON.stringify({ pivots: value.pivots, levels: value.levels }) },
-          ];
-        },
+        schema: LEVELS_OUTPUT_SCHEMA,
+        render: (_args, value) => levelsBlocks(value),
       },
       execute: async (args) => {
         const result = await requestLevelFacts(provider, {
@@ -490,36 +420,8 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         },
       },
       output: {
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            ok: { type: "boolean", required: true },
-            symbol: { type: "string" },
-            source: { type: "string" },
-            snapshot: { type: "json" },
-            predictedFunding: { type: "json" },
-            openInterestCap: { type: "json" },
-            reason: { type: "string" },
-            hint: { type: "string" },
-          },
-        },
-        render: (_args, value) => {
-          if (value.ok !== true) {
-            return [{ type: "text", text: `未取到衍生品数据（${String(value.reason ?? "unknown")}）。${String(value.hint ?? "")}` }];
-          }
-          const blocks = [{
-            type: "text" as const,
-            text: `${String(value.symbol)} 的${String(value.source ?? "")}永续数据（机械事实）：${JSON.stringify(value.snapshot)}`,
-          }];
-          if (value.predictedFunding !== undefined) {
-            blocks.push({ type: "text" as const, text: `跨场所预测资金费：${JSON.stringify(value.predictedFunding)}` });
-          }
-          if (value.openInterestCap !== undefined) {
-            blocks.push({ type: "text" as const, text: `OI 已达上限的资产：${JSON.stringify(value.openInterestCap)}` });
-          }
-          return blocks;
-        },
+        schema: DERIVATIVES_OUTPUT_SCHEMA,
+        render: (_args, value) => derivativesBlocks(value),
       },
       execute: async (args) => {
         const result = await requestDerivatives(
@@ -566,43 +468,8 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         },
       },
       output: {
-        schema: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            ok: { type: "boolean", required: true },
-            symbol: { type: "string" },
-            interval: { type: "string" },
-            direction: { type: "string" },
-            support: { type: "json" },
-            confidence: { type: "json" },
-            sufficiency: { type: "json" },
-            agreement: { type: "json" },
-            model: { type: "string" },
-            reason: { type: "string" },
-            hint: { type: "string" },
-          },
-        },
-        render: (_args, value) => {
-          if (value.ok !== true) {
-            return [{
-              type: "text",
-              text: `未完成置信度校准（${String(value.reason ?? "unknown")}）。${String(value.hint ?? "")}`,
-            }];
-          }
-          const support = value.support as { score?: number; label?: string; probabilities?: unknown } | undefined;
-          const confidence = value.confidence as { value?: number; level?: string } | undefined;
-          const sufficiency = value.sufficiency as { score?: number } | null | undefined;
-          const text = `Jev 校准：支持度 ${support?.score ?? "?"}/4（${support?.label ?? "?"}）；`
-            + `置信度 ${confidence?.value ?? "?"}（${confidence?.level ?? "?"}）`
-            + `${sufficiency === undefined || sufficiency === null ? "" : `；证据充分度 ${sufficiency.score ?? "?"}`}。`
-            + `模型 ${String(value.model ?? "?")}。`;
-          const blocks = [{ type: "text" as const, text }];
-          if (support?.probabilities !== undefined) {
-            blocks.push({ type: "text" as const, text: `支持度概率分布：${JSON.stringify(support.probabilities)}` });
-          }
-          return blocks;
-        },
+        schema: CONFIDENCE_OUTPUT_SCHEMA,
+        render: (_args, value) => confidenceBlocks(value),
       },
       execute: async (args, exec) => {
         const symbol = resolveSymbol(args.symbol);
