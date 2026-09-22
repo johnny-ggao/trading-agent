@@ -1,3 +1,4 @@
+import { DEFAULT_BAR_POLICY } from "./chart";
 import { DEFAULT_INDICATORS, type IndicatorConfig } from "./indicators";
 import { resolveInterval, type Interval } from "./timeframe";
 
@@ -17,8 +18,46 @@ export interface ResolvedChartRequest {
   indicators: IndicatorConfig;
 }
 
+/**
+ * 出图入参不合法时抛出：消息里必须点名字段与期望，模型据此自我纠正。
+ *
+ * 校验集中在解析边界（`resolveChartRequest`）——`trading-signals` 对非法周期**不抛错**
+ * （`SMA(0)` 静默产出 0、`SMA(-5)` 产出 null），所以边界是唯一能拦住它的地方。
+ */
+export class InvalidChartArgsError extends Error {
+  readonly field: string;
+
+  constructor(field: string, expectation: string, got: unknown) {
+    super(`${field} ${expectation}，收到 ${JSON.stringify(got)}`);
+    this.name = "InvalidChartArgsError";
+    this.field = field;
+  }
+}
+
+/** 周期必须是正整数，且不超过单次取数上限（否则根本取不到）。 */
+function assertPeriod(field: string, value: number): void {
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new InvalidChartArgsError(field, "必须是正整数（周期根数）", value);
+  }
+  if (value > DEFAULT_BAR_POLICY.maxBars) {
+    throw new InvalidChartArgsError(field, `不能超过单次取数上限 ${DEFAULT_BAR_POLICY.maxBars}`, value);
+  }
+}
+
+/** 校验出图入参；不合法即抛错。 */
+export function validateChartArgs(request: ChartRequest): void {
+  if (request.ma !== undefined) {
+    if (request.ma.length === 0) {
+      throw new InvalidChartArgsError("ma", "不能是空数组；要覆盖就给具体周期，或干脆不传", request.ma);
+    }
+    for (const period of request.ma) assertPeriod("ma", period);
+  }
+  if (request.rsi !== undefined) assertPeriod("rsi", request.rsi);
+}
+
 /** 默认填充：符号、周期（含时间词）、指标参数（含可选开关）。 */
 export function resolveChartRequest(request: ChartRequest = {}): ResolvedChartRequest {
+  validateChartArgs(request);
   const symbol = request.symbol !== undefined && request.symbol.trim() !== ""
     ? request.symbol.trim()
     : "BTC";

@@ -19,12 +19,12 @@ import {
   DEFAULT_TYPESAFE_TIMEOUT_MS,
   TypeSafeConfidenceScorer,
 } from "./analysis/typesafe";
-import { describeIndicators } from "./market/intent";
+import { describeIndicators, InvalidChartArgsError } from "./market/intent";
 import { buildAnchor } from "./market/anchor";
 import { requestDerivatives, requestIndicatorFacts, requestLevelFacts, requestResonance } from "./market/facts";
 import { HyperliquidProvider } from "./market/hyperliquid";
-import type { LevelKind } from "./market/levelFacts";
 import { parseIndicatorSelectors } from "./market/indicatorSpec";
+import type { IndicatorSelector } from "./market/indicatorFacts";
 import { buildMarketView, chartRequestFromQuery, loadChart, type MarketView } from "./market/request";
 import { resolveSymbol } from "./market/symbol";
 import { resolveInterval } from "./market/timeframe";
@@ -154,16 +154,11 @@ function chartRouteHandler(): (req: IncomingMessage, res: ServerResponse) => Pro
       });
       res.end(JSON.stringify({ ok: true, chartSpec: spec }));
     } catch (error) {
-      res.writeHead(500, { "content-type": "application/json; charset=utf-8" });
+      const invalid = error instanceof InvalidChartArgsError;
+      res.writeHead(invalid ? 400 : 500, { "content-type": "application/json; charset=utf-8" });
       res.end(JSON.stringify({ ok: false, error: error instanceof Error ? error.message : String(error) }));
     }
   };
-}
-
-/** 把工具入参里的字符串窄化成合法价位类别；不认识的忽略（由 tool schema 描述约束）。 */
-function narrowLevelKinds(values: string[]): LevelKind[] {
-  const allowed: LevelKind[] = ["support", "resistance", "fib", "pivots"];
-  return allowed.filter((kind) => values.includes(kind));
 }
 
 /**
@@ -223,21 +218,26 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
           type: "object",
           additionalProperties: false,
           properties: {
-            symbol: { type: "string", required: true },
-            interval: { type: "string", required: true },
-            bars: { type: "number", required: true },
-            formingBars: { type: "number", required: true },
-            lastClose: { type: "number", required: true },
+            ok: { type: "boolean" },
+            reason: { type: "string" },
+            hint: { type: "string" },
+            symbol: { type: "string" },
+            interval: { type: "string" },
+            bars: { type: "number" },
+            formingBars: { type: "number" },
+            lastClose: { type: "number" },
             lastClosedBar: { type: "number" },
-            context: { type: "json", required: true },
+            context: { type: "json" },
             resonance: { type: "json" },
-            hint: { type: "string", required: true },
-            chartSpec: { type: "json", required: true },
+            chartSpec: { type: "json" },
           },
         },
-        render: (_args, value) => [
+        render: (_args, value): Array<{ type: "text"; text: string }> => [
+          ...(value.ok === false
+            ? [{ type: "text" as const, text: `出图失败（${String(value.reason ?? "invalid_args")}）：${String(value.hint ?? "")}` }]
+            : []),
           {
-            type: "text",
+            type: "text" as const,
             text: `已渲染 ${value.symbol} / ${value.interval} 的 ${value.bars} 根 K 线（Binance 现货），`
               + `已收盘到 bar ${String(value.lastClosedBar ?? "?")}，最新收盘价 ${String(value.lastClose)}。`,
           },
@@ -253,18 +253,28 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
             }]),
           { type: "text", text: String(value.hint) },
         ],
-        presentationMeta: (_args, value) => value.chartSpec,
+        // 失败时没有图可展示；返回空对象而不是 undefined（契约要求 JsonValue）。
+        presentationMeta: (_args, value) => value.chartSpec ?? {},
       },
       execute: async (args) => {
-        const view = await buildMarketView(provider, {
-          symbol: args.symbol,
-          timeframe: args.timeframe,
-          ma: args.ma,
-          rsi: args.rsi,
-          bollinger: args.bollinger,
-          kdj: args.kdj,
-          atr: args.atr,
-        });
+        let view: MarketView;
+        try {
+          view = await buildMarketView(provider, {
+            symbol: args.symbol,
+            timeframe: args.timeframe,
+            ma: args.ma,
+            rsi: args.rsi,
+            bollinger: args.bollinger,
+            kdj: args.kdj,
+            atr: args.atr,
+          });
+        } catch (error) {
+          if (error instanceof InvalidChartArgsError) {
+            // 入参不合法就明确回绝，让模型改参数重试——而不是把一个 0 值均线画出来。
+            return { ok: false, reason: "invalid_args", hint: error.message };
+          }
+          throw error;
+        }
         viewCache.set(viewCacheKey(view.spec.symbol, view.spec.interval), {
           view,
           indicators: describeIndicators(view.resolved.indicators),
@@ -351,10 +361,23 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         },
       },
       execute: async (args) => {
+        let selectors: IndicatorSelector[];
+        try {
+          selectors = parseIndicatorSelectors(args.indicators);
+        } catch (error) {
+          // 拼错的指标名/参数必须变成模型能读懂并纠正的失败，而不是工具级异常。
+          return {
+            ok: false,
+            reason: "invalid_args",
+            required: 0,
+            available: 0,
+            hint: error instanceof Error ? error.message : String(error),
+          };
+        }
         const result = await requestIndicatorFacts(provider, {
           symbol: args.symbol,
           interval: args.interval,
-          indicators: parseIndicatorSelectors(args.indicators),
+          indicators: selectors,
         });
         if (result.ok !== true) {
           return {
@@ -382,7 +405,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
       description:
         "按需计算价位：支撑/阻力簇（含触碰次数与距现价百分比）、斐波那契回撤、swing 枢轴。"
         + "粒度和取舍由你决定：tolerancePct 控制聚簇容差（默认 1）、pivotOptions 控制枢轴敏感度、"
-        + "maxLevels 控制返回条数（按触碰次数降序）。**只用已收盘 K 线**，每条价位附带形成它的"
+        + "maxLevels 控制返回条数（按触碰次数降序；必须是正整数）。**只用已收盘 K 线**，每条价位附带形成它的"
         + "枢轴时间，便于你在回答里引用具体日期与价位。",
       parameters: {
         symbol: { type: "string", required: true, description: "交易对或币种。" },
@@ -439,7 +462,7 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         const result = await requestLevelFacts(provider, {
           symbol: args.symbol,
           interval: args.interval,
-          ...(args.kinds === undefined ? {} : { kinds: narrowLevelKinds(args.kinds) }),
+          ...(args.kinds === undefined ? {} : { kinds: args.kinds }),
           ...(args.tolerancePct === undefined ? {} : { tolerancePct: args.tolerancePct }),
           ...(args.maxLevels === undefined ? {} : { maxLevels: args.maxLevels }),
         });

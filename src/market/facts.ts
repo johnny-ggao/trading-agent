@@ -35,10 +35,15 @@ export interface Grounding {
 /** 取数的统一失败形状：说明缺多少，而不是给一个基于不足窗口的数。 */
 export interface Insufficient {
   ok: false;
-  reason: "insufficient_closed_bars" | "empty_request" | "derivatives_unavailable";
+  reason: "insufficient_closed_bars" | "empty_request" | "derivatives_unavailable" | "invalid_args";
   required: number;
   available: number;
   hint: string;
+}
+
+/** 入参不合法时的统一失败：required/available 不适用，用 0 占位，靠 hint 说清怎么改。 */
+function invalidArgs(hint: string): { ok: false; error: Insufficient } {
+  return { ok: false, error: { ok: false, reason: "invalid_args", required: 0, available: 0, hint } };
 }
 
 /** 取数接缝的入参：**needs 决定要多少根**，这是取数与够不够判定的唯一策略。 */
@@ -201,10 +206,36 @@ export async function requestIndicatorFacts(
 export interface LevelRequestInput {
   symbol: string;
   interval?: string;
-  kinds?: LevelKind[];
+  /** 收原始字符串：**不合法就报错，而不是静默丢弃**（拼错的 kind 曾会变成静默空成功）。 */
+  kinds?: string[];
   pivotOptions?: { left: number; right: number };
   tolerancePct?: number;
   maxLevels?: number;
+}
+
+const LEVEL_KINDS: LevelKind[] = ["support", "resistance", "fib", "pivots"];
+
+/** 校验价位入参；不合法则返回失败。 */
+function validateLevelInput(input: LevelRequestInput): { ok: false; error: Insufficient } | undefined {
+  if (input.kinds !== undefined) {
+    if (input.kinds.length === 0) {
+      return invalidArgs("kinds 不能是空数组；要全部类别就不要传这个字段。");
+    }
+    const unknown = input.kinds.filter((kind) => !LEVEL_KINDS.includes(kind as LevelKind));
+    if (unknown.length > 0) {
+      return invalidArgs(
+        `不认识的 kinds 值 ${unknown.map((k) => JSON.stringify(k)).join("、")}；`
+        + `合法值：${LEVEL_KINDS.join(" / ")}。`,
+      );
+    }
+  }
+  if (input.tolerancePct !== undefined && !(input.tolerancePct > 0)) {
+    return invalidArgs(`tolerancePct 必须是正数（百分比，如 1 表示 1%），收到 ${JSON.stringify(input.tolerancePct)}。`);
+  }
+  if (input.maxLevels !== undefined && (!Number.isInteger(input.maxLevels) || input.maxLevels < 1)) {
+    return invalidArgs(`maxLevels 必须是正整数，收到 ${JSON.stringify(input.maxLevels)}。`);
+  }
+  return undefined;
 }
 
 export interface LevelFactsResult {
@@ -226,6 +257,8 @@ export async function requestLevelFacts(
   input: LevelRequestInput,
   options: ClockOptions = {},
 ): Promise<LevelFactsResponse> {
+  const invalid = validateLevelInput(input);
+  if (invalid !== undefined) return invalid.error;
   const interval = resolveInterval(input.interval);
   const closed = await closedBars(provider, {
     symbol: input.symbol,
@@ -236,7 +269,7 @@ export async function requestLevelFacts(
   if (closed.ok !== true) return closed.error;
   const series = closed.value;
   const facts = computeLevelFacts(series.candles, {
-    ...(input.kinds === undefined ? {} : { kinds: input.kinds }),
+    ...(input.kinds === undefined ? {} : { kinds: input.kinds as LevelKind[] }),
     ...(input.pivotOptions === undefined ? {} : { pivotOptions: input.pivotOptions }),
     ...(input.tolerancePct === undefined ? {} : { tolerancePct: input.tolerancePct }),
     ...(input.maxLevels === undefined ? {} : { maxLevels: input.maxLevels }),

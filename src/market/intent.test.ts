@@ -47,3 +47,45 @@ describe("描述所用指标（让回答能声明默认）", () => {
     expect(text).toContain("ATR(14)");
   });
 });
+
+describe("出图入参校验（与按需路径同一姿态：不合法就明确报错）", () => {
+  it("接受合法参数", () => {
+    expect(() => resolveChartRequest({ ma: [50, 200], rsi: 14 })).not.toThrow();
+    expect(() => resolveChartRequest({})).not.toThrow();
+    expect(() => resolveChartRequest({ ma: [20] })).not.toThrow();
+  });
+
+  it("拒绝非正整数周期（trading-signals 会静默产出 0/null，必须在边界拦住）", () => {
+    for (const ma of [[0], [-5], [1.5], [50, 0]]) {
+      expect(() => resolveChartRequest({ ma })).toThrow(/ma/);
+    }
+    for (const rsi of [0, -1, 1.5]) {
+      expect(() => resolveChartRequest({ rsi })).toThrow(/rsi/);
+    }
+  });
+
+  it("拒绝空数组（想覆盖就得给出真的周期）", () => {
+    expect(() => resolveChartRequest({ ma: [] })).toThrow(/ma/);
+  });
+
+  it("拒绝超过单次取数上限的周期（要不到就等于骗人）", () => {
+    expect(() => resolveChartRequest({ ma: [2000] })).toThrow(/ma/);
+  });
+
+  it("错误信息指出字段与期望，让模型能自我纠正", () => {
+    try {
+      resolveChartRequest({ rsi: 0 });
+      throw new Error("should have thrown");
+    } catch (error) {
+      const message = (error as Error).message;
+      expect(message).toContain("rsi");
+      expect(message).toContain("正整数");
+    }
+  });
+
+  it("合法参数照常进入解析结果", () => {
+    const r = resolveChartRequest({ ma: [50, 200], rsi: 21 });
+    expect(r.indicators.ma).toEqual([50, 200]);
+    expect(r.indicators.rsi).toBe(21);
+  });
+});

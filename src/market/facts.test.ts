@@ -230,3 +230,44 @@ describe("requestDerivatives：资金费/OI/预言机价与 HL 独有项", () =>
 
   void hlProvider;
 });
+
+describe("入参校验：不合法就报错，不再静默空成功", () => {
+  const provider: MarketDataProvider = {
+    fetchCandles: async () => ramp,
+    fetchDerivatives: async (symbol) => ({ symbol }),
+  };
+
+  it("kinds 拼错：报错并指出是哪个值、合法值是什么", async () => {
+    const result = await requestLevelFacts(provider, { symbol: "BTC", interval: "1h", kinds: ["suport"] }, { now: NOW });
+    expect(result.ok).toBe(false);
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.reason).toBe("invalid_args");
+    expect(result.hint).toContain("suport");
+    expect(result.hint).toContain("support");
+  });
+
+  it("kinds 空数组：报错而不是静默给 0 条", async () => {
+    const result = await requestLevelFacts(provider, { symbol: "BTC", interval: "1h", kinds: [] }, { now: NOW });
+    expect(result.ok).toBe(false);
+    if (result.ok !== false) throw new Error("expected failure");
+    expect(result.reason).toBe("invalid_args");
+    expect(result.hint).toContain("空数组");
+  });
+
+  it("maxLevels 非正整数：报错（负 slice 会给出意外结果）", async () => {
+    for (const maxLevels of [-1, 0, 1.5]) {
+      const result = await requestLevelFacts(provider, { symbol: "BTC", interval: "1h", maxLevels }, { now: NOW });
+      expect(result.ok).toBe(false);
+    }
+  });
+
+  it("tolerancePct 非正：报错", async () => {
+    const result = await requestLevelFacts(provider, { symbol: "BTC", interval: "1h", tolerancePct: 0 }, { now: NOW });
+    expect(result.ok).toBe(false);
+  });
+
+  it("合法 kinds 照常工作", async () => {
+    const result = await requestLevelFacts(provider, { symbol: "BTC", interval: "1h", kinds: ["support", "pivots"] }, { now: NOW });
+    expect(result.ok).toBe(true);
+  });
+});
