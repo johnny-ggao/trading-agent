@@ -101,14 +101,22 @@ function perIntervalProvider(map: Record<string, Candle[]>): MarketDataProvider 
   };
 }
 
-describe("buildMarketView（工具用：加市场状态与共振）", () => {
-  it("当前周期图表 + 市场状态 + 高一级周期共振", async () => {
+describe("buildMarketView（工具用：加市场状态；共振改为按需取）", () => {
+  it("出图带上当前周期的市场状态", async () => {
     const view = await buildMarketView(perIntervalProvider({ "1h": rising, "4h": rising }), { symbol: "BTC", timeframe: "1h" });
     expect(view.spec.interval).toBe("1h");
     expect(view.context.trend.state).toBe("trending");
-    expect(view.resonance.higherInterval).toBe("4h");
-    expect(view.resonance.aligned).toBe(true);
-    expect(view.resonance.summary).toContain("共振向上");
+  });
+
+  it("不再为共振多取一次高周期 K 线（按需，见 trading_chart/confidence 的 compareTo）", async () => {
+    const asked: string[] = [];
+    const provider = {
+      fetchCandles: async (_s: string, interval: string) => { asked.push(interval); return rising; },
+      fetchDerivatives: async (symbol: string) => ({ symbol }),
+    };
+    const view = await buildMarketView(provider, { symbol: "BTC", timeframe: "1h" });
+    expect(asked).toEqual(["1h"]);          // 只取了当前周期
+    expect(view.resonance).toBeUndefined(); // 出图不夹带共振
   });
 });
 

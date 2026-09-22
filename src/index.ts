@@ -608,6 +608,11 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
         direction: { type: "string", required: true, description: "方向：bullish / bearish / range / unclear。" },
         invalidation: { type: "string", required: true, description: "失效位（价位或条件），例如「跌破 63000」。" },
         thesis: { type: "string", required: true, description: "你的方向性结论与理由（会发给 Jev 评分）。" },
+        compareTo: {
+          type: "string",
+          description: "若你在出图时用了 compareTo 做多周期比较，这里传**同一个**周期，"
+            + "Jev 才会拿到与你相同的对比证据；不传则证据里不含共振。",
+        },
       },
       output: {
         schema: {
@@ -672,13 +677,29 @@ export function apply(ctx: HostContext, rawConfig?: AnalysisConfigInput): void {
             hint: "在侧栏「插件」页 → 已安装 → dsh-trading-agent → trading-agent 行的「配置」里填入 TypeSafe API key 后重试；未配置时请按自己的判断给出置信度并声明未校准。",
           };
         }
+        // 与模型同一个周期对：模型出图时用什么 compareTo，这里就用什么——
+        // 否则 Jev 的证据描述的是另一种对比（同一回合两个结论）。
+        const compareTo = (args.compareTo ?? "").trim();
+        const resonance = compareTo === ""
+          ? undefined
+          : await requestResonance(provider, { symbol, interval, compareTo });
         const evidence = buildConfidenceEvidence({
           symbol,
           interval,
           bars: cached.view.bars,
           indicators: cached.indicators,
           context: cached.view.context,
-          resonance: cached.view.resonance,
+          ...(resonance !== undefined && resonance.ok === true
+            ? {
+              resonance: {
+                higherInterval: resonance.higherInterval,
+                higherDirection: resonance.higher.trend.direction,
+                currentDirection: resonance.current.trend.direction,
+                aligned: resonance.aligned,
+                summary: resonance.summary,
+              },
+            }
+            : {}),
           candidates: cached.view.candidates,
           ruleSignals: cached.view.ruleSignals,
         });

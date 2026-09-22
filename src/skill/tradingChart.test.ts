@@ -244,3 +244,17 @@ describe("skill v3：lookback 让 agent 用时间表达窗口", () => {
     expect(body).toContain("明确报错");
   });
 });
+
+describe("skill v3：共振的周期对必须两处一致", () => {
+  const body = tradingChartSkill.content;
+
+  it("要求 trading_confidence 传与出图相同的 compareTo", () => {
+    expect(body).toContain("compareTo");
+    expect(body).toContain("这里要传同一个值");
+  });
+
+  it("说明不存在更高周期时不做共振（1w 不再自比）", () => {
+    expect(body).toContain("不存在更高周期时不做共振");
+    expect(body).toContain("跟自己比");
+  });
+});

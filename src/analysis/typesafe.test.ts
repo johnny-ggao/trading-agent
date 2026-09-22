@@ -21,12 +21,8 @@ const evidence: ConfidenceEvidence = {
   },
   resonance: {
     higherInterval: "4h",
-    higher: {
-      trend: { adx: 30, pdi: 32, mdi: 16, state: "trending", direction: "up" },
-      volatility: { atr: 900, atrPct: 0.014, state: "normal" },
-      volume: { ratio: 1.2, state: "normal" },
-      summary: "走势：趋势；波动：正常；量能：常态",
-    },
+    higherDirection: "up",
+    currentDirection: "up",
     aligned: true,
     summary: "共振向上。",
   },

@@ -1,5 +1,5 @@
 import { noul, score, type SystemOneResult } from "@typesafe-ai/sdk";
-import type { ChartCandidates, MarketContext, RuleSignal, TimeframeResonance } from "../shared/analysis";
+import type { ChartCandidates, MarketContext, RuleSignal } from "../shared/analysis";
 import { nearestPerSide } from "../market/candidates";
 
 /** 模型给出的方向性结论：方向 + 失效位 + 理由（理由文本会发给 TypeSafe 评分）。 */
@@ -60,6 +60,18 @@ export interface ConfidenceThresholds {
 
 export const DEFAULT_CONFIDENCE_THRESHOLDS: ConfidenceThresholds = { highThreshold: 0.7, mediumThreshold: 0.4 };
 
+/**
+ * 证据里的多周期共振：**紧凑形状**（只含结论与两侧方向），不搬整套 MarketContext。
+ * 它是给 Jev 读的文本性证据，没有下游逻辑依赖其内部结构。
+ */
+export interface EvidenceResonance {
+  higherInterval: string;
+  higherDirection: string;
+  currentDirection: string;
+  aligned: boolean;
+  summary: string;
+}
+
 /** 发给 TypeSafe 的紧凑证据：机械层的可序列化摘要，不含原始 K 线。 */
 export interface ConfidenceEvidence {
   readonly symbol: string;
@@ -68,7 +80,8 @@ export interface ConfidenceEvidence {
   readonly indicators: string;
   readonly lastPrice: number;
   readonly context: MarketContext;
-  readonly resonance: TimeframeResonance;
+  /** 多周期共振：**按需**（调用方用与模型相同的周期对取得）；没有更高周期时不带。 */
+  readonly resonance?: EvidenceResonance;
   readonly maAlignment?: ChartCandidates["maAlignment"];
   readonly levels: ReadonlyArray<{ kind: string; price: number; label: string; touches: number }>;
   readonly pivots: ReadonlyArray<{ time: number; price: number; kind: string }>;
@@ -84,7 +97,7 @@ export interface ConfidenceEvidenceInput {
   readonly bars: number;
   readonly indicators: string;
   readonly context: MarketContext;
-  readonly resonance: TimeframeResonance;
+  readonly resonance?: EvidenceResonance;
   readonly candidates: ChartCandidates;
   readonly ruleSignals: readonly RuleSignal[];
 }
@@ -105,7 +118,7 @@ export function buildConfidenceEvidence(input: ConfidenceEvidenceInput): Confide
     indicators: input.indicators,
     lastPrice: candidates.lastPrice,
     context: input.context,
-    resonance: input.resonance,
+    ...(input.resonance === undefined ? {} : { resonance: input.resonance }),
     ...(candidates.maAlignment === undefined ? {} : { maAlignment: candidates.maAlignment }),
     levels: [...nearest, ...fibs].map((level) => ({
       kind: level.kind,

@@ -14,12 +14,17 @@ const STATE_ZH = { trending: "趋势", ranging: "震荡", transition: "过渡" }
 /**
  * 多周期共振：高周期定结构与方向、当前周期定时机。
  * 两侧方向都明确且相同为共振，相反为背离，任一走平为方向不明确。
+ *
+ * **两侧周期相同时返回 `undefined`**：那意味着不存在更高周期（例如 1w 之上没有更大周期，
+ * `higherInterval` 会回退成自身），拿同一条序列跟自己比必然"同向"，是个假结论。
  */
 export function computeResonance(
   higher: string,
   higherContext: MarketContext,
   currentContext: MarketContext,
-): TimeframeResonance {
+  currentInterval?: string,
+): TimeframeResonance | undefined {
+  if (currentInterval !== undefined && higher === currentInterval) return undefined;
   const unambiguous = higherContext.trend.direction !== "flat" && currentContext.trend.direction !== "flat";
   const aligned = unambiguous && higherContext.trend.direction === currentContext.trend.direction;
   const verdict = !unambiguous

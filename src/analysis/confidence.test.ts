@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import type { ChartCandidates, MarketContext, RuleSignal, TimeframeResonance } from "../shared/analysis";
+import type { ChartCandidates, MarketContext, RuleSignal } from "../shared/analysis";
 import {
+  type EvidenceResonance,
   buildConfidenceEvidence,
   buildConfidenceQuestions,
   confidenceLevel,
@@ -19,9 +20,10 @@ const context: MarketContext = {
   summary: "走势：趋势；波动：正常；量能：放量",
 };
 
-const resonance: TimeframeResonance = {
+const resonance: EvidenceResonance = {
   higherInterval: "4h",
-  higher: context,
+  higherDirection: "up",
+  currentDirection: "up",
   aligned: true,
   summary: "高周期 4h 方向向上（趋势）；当前周期方向向上：共振向上。",
 };

@@ -6,7 +6,6 @@ import { allClosed, partitionCandles, type CandleClosure } from "./closedCandles
 import { computeMarketContext } from "./context";
 import { computeIndicators } from "./indicators";
 import { resolveChartRequest, type ChartRequest, type ResolvedChartRequest } from "./intent";
-import { computeResonance, higherInterval } from "./multiTimeframe";
 import { buildChartPresentation } from "./presentation";
 import { computeRuleSignals, type SignalInputs } from "./signals";
 import { resolveSymbol } from "./symbol";
@@ -24,7 +23,12 @@ export interface LoadedChart {
 /** 规格里的 MarketView：图表 + 机械候选/信号 + 市场状态 + 多周期共振。 */
 export interface MarketView extends LoadedChart {
   context: MarketContext;
-  resonance: TimeframeResonance;
+  /**
+   * 多周期共振：**按需取**，不在出图时无条件计算（ADR-0008 的延伸）。
+   * 模型的共振来自 `trading_chart(compareTo)`；Jev 的证据来自 `trading_confidence(compareTo)`
+   * ——两者用同一个周期对，因此必然同源。出图本身不再多取一次高周期 K 线。
+   */
+  resonance?: TimeframeResonance;
   /** 尾部形成中 K 线的根数：0 或 1；它们不参与任何机械判断。 */
   formingBars: number;
   /** 最后一根**已收盘** K 线的开盘时间（秒）；回答里引用数值时的锚点。 */
@@ -143,20 +147,10 @@ export async function buildMarketView(
   const loaded = assemble(resolved, closure);
 
   const context = computeMarketContext(closure.closed, resolved.indicators);
-  const higher = higherInterval(resolved.interval);
-  const higherCandles = await provider.fetchCandles(resolved.symbol, higher, {
-    limit: barsForInterval(higher, resolved.indicators),
-  });
-  const higherClosure = partitionCandles(higherCandles, higher, now);
-  const resonance = computeResonance(
-    higher,
-    computeMarketContext(higherClosure.closed, resolved.indicators),
-    context,
-  );
+  // 不再无条件取高周期：共振由 trading_chart(compareTo) / trading_confidence(compareTo) 按需取。
   return {
     ...loaded,
     context,
-    resonance,
     formingBars: closure.formingBars,
     ...(closure.lastClosed === undefined ? {} : { lastClosedBar: closure.lastClosed.time }),
     fetchedAt: now,

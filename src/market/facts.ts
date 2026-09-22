@@ -396,7 +396,10 @@ export async function requestResonance(
 
   const currentContext = computeMarketContext(currentSeries.candles, DEFAULT_INDICATORS);
   const higherContext = computeMarketContext(higherSeries.candles, DEFAULT_INDICATORS);
-  const resonance = computeResonance(higher, higherContext, currentContext);
+  const resonance = computeResonance(higher, higherContext, currentContext, currentInterval);
+  if (resonance === undefined) {
+    return invalidArgs(`不存在比 ${currentInterval} 更高的周期，无法做多周期共振；请指定 compareTo 为一个不同的周期。`).error;
+  }
   const trendOf = (context: typeof currentContext) => ({
     trend: {
       state: context.trend.state,

@@ -22,21 +22,21 @@ describe("higherInterval", () => {
 
 describe("computeResonance", () => {
   it("同向为共振", () => {
-    const resonance = computeResonance("4h", context("up"), context("up"));
-    expect(resonance.aligned).toBe(true);
-    expect(resonance.summary).toContain("共振向上");
+    const resonance = computeResonance("4h", context("up"), context("up"), "1h");
+    expect(resonance!.aligned).toBe(true);
+    expect(resonance!.summary).toContain("共振向上");
   });
 
   it("反向为背离", () => {
-    const resonance = computeResonance("4h", context("up"), context("down"));
-    expect(resonance.aligned).toBe(false);
-    expect(resonance.summary).toContain("背离");
+    const resonance = computeResonance("4h", context("up"), context("down"), "1h");
+    expect(resonance!.aligned).toBe(false);
+    expect(resonance!.summary).toContain("背离");
   });
 
   it("任一侧走平则方向不明确", () => {
-    const resonance = computeResonance("4h", context("up"), context("flat"));
-    expect(resonance.aligned).toBe(false);
-    expect(resonance.summary).toContain("方向不明确");
+    const resonance = computeResonance("4h", context("up"), context("flat"), "1h");
+    expect(resonance!.aligned).toBe(false);
+    expect(resonance!.summary).toContain("方向不明确");
   });
 });
 
@@ -50,16 +50,27 @@ describe("任意周期对（不再写死 ×4）", () => {
   });
 
   it("computeResonance 接受任意两个周期标签（1d 对 1w）", () => {
-    const weekly = computeResonance("1w", context("up"), context("up"));
-    expect(weekly.higherInterval).toBe("1w");
-    expect(weekly.aligned).toBe(true);
-    expect(weekly.summary).toContain("共振向上");
+    const weekly = computeResonance("1w", context("up"), context("up"), "1d");
+    expect(weekly?.higherInterval).toBe("1w");
+    expect(weekly?.aligned).toBe(true);
+    expect(weekly?.summary).toContain("共振向上");
   });
 
   it("跨两级也可比（15m 对 4h），背离照常报出", () => {
-    const wide = computeResonance("4h", context("up"), context("down"));
-    expect(wide.higherInterval).toBe("4h");
-    expect(wide.aligned).toBe(false);
-    expect(wide.summary).toContain("周期背离");
+    const wide = computeResonance("4h", context("up"), context("down"), "15m");
+    expect(wide?.higherInterval).toBe("4h");
+    expect(wide?.aligned).toBe(false);
+    expect(wide?.summary).toContain("周期背离");
+  });
+});
+
+describe("不存在更高周期时不做共振（1w 自比）", () => {
+  it("两侧周期相同时返回 undefined，而不是必然 aligned 的假结论", () => {
+    // higherInterval("1w") === "1w"，同一个序列跟自己比永远同向 → 不做共振。
+    expect(computeResonance("1w", context("up"), context("up"), "1w")).toBeUndefined();
+  });
+
+  it("正常周期对仍给结论", () => {
+    expect(computeResonance("4h", context("up"), context("up"), "1h")).toBeDefined();
   });
 });
