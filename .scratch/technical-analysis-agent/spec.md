@@ -87,6 +87,7 @@
 ### 模块接缝 (Module seams)
 - **`MarketDataProvider`**（接口）：`fetchCandles(symbol, interval, range)` 和 `fetchDerivatives(symbol)`。实现：**BinanceProvider**（主要）和 **HyperliquidProvider**（补充）。这是唯一的外部 I/O。
 - **`buildMarketView(request, provider)`**（纯编排，主要接缝）：解析请求并返回一个 **`MarketView`** = `{ chartSpec, indicators, candidates, ruleSignals, context }`。所有确定性的东西都挂在这一个入口点上。
+  - **ADR-0008 起**：`MarketView` 是对**宿主内部**的编排结果与缓存条目，不再是模型面对的契约——模型按需调用 `trading_indicator` / `trading_levels`（及后续 `trading_derivatives`）取它需要的那部分；`trading_chart` 只给图与最小锚点。**代码负责算，agent 负责选。**
   - `candidates` = swing pivots、支撑/阻力区、斐波那契价位、均线排列、走势线/通道。
   - `ruleSignals` = 交叉、超买/超卖、价位突破。
   - `context` = **市场状态**：走势强度（例如 ADX）、区间与趋势之别、波动率（ATR / 布林带宽度）、成交量状态、均线排列。
